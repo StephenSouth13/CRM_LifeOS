@@ -1,27 +1,55 @@
 {
   "compilerOptions": {
+    /* ====== CƠ BẢN ====== */
+    "target": "ESNext",
     "lib": ["dom", "dom.iterable", "esnext"],
-    "allowJs": true,
-    "target": "ES6",
-    "skipLibCheck": true,
-    "strict": true,
-    "noEmit": true,
-    "esModuleInterop": true,
+    "jsx": "preserve",
     "module": "esnext",
     "moduleResolution": "bundler",
-    "resolveJsonModule": true,
+    "allowJs": true,
+    "noEmit": true,
     "isolatedModules": true,
-    "jsx": "preserve",
+    "resolveJsonModule": true,
     "incremental": true,
-    "plugins": [
-      {
-        "name": "next"
-      }
-    ],
+
+    /* ====== KIỂM TRA TYPE ====== */
+    "strict": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "esModuleInterop": true,
+
+    /* ====== ĐƯỜNG DẪN NGẮN ====== */
+    "baseUrl": ".",
     "paths": {
-      "@/*": ["./*"]
-    }
+      "@/*": ["./*"],
+      "@components/*": ["components/*"],
+      "@lib/*": ["lib/*"],
+      "@hooks/*": ["hooks/*"],
+      "@store/*": ["store/*"],
+      "@styles/*": ["styles/*"],
+      "@types/*": ["types/*"]
+    },
+
+    /* ====== PLUGIN CHO NEXT ====== */
+    "plugins": [{ "name": "next" }],
+
+    /* ====== BUILD + TOOLING ====== */
+    "moduleDetection": "force",
+    "allowImportingTsExtensions": true
   },
-  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
-  "exclude": ["node_modules"]
+
+  /* ====== BAO GỒM CÁC FILE CẦN DÒ ====== */
+  "include": [
+    "next-env.d.ts",
+    "**/*.ts",
+    "**/*.tsx",
+    ".next/types/**/*.ts"
+  ],
+
+  /* ====== LOẠI TRỪ NHỮNG FILE KHÔNG CẦN THIẾT ====== */
+  "exclude": [
+    "node_modules",
+    "dist",
+    "build"
+  ]
 }
