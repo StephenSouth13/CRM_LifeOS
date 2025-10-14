@@ -3,64 +3,185 @@ import { persist } from "zustand/middleware"
 import type { Language } from "./i18n"
 import type { User, MediaPlayerState, Section } from "./types"
 
+// 🎧 Global Media item
+export interface MediaItem {
+  id: string
+  title: string
+  platform: "youtube" | "spotify" | "lofi"
+  url?: string
+  thumbnail?: string
+  currentTime?: number
+}
+
+// 🌳 Forest State
+interface ForestState {
+  level: number
+  trees: number
+  growTree: () => void
+  resetForest: () => void
+}
+
+// ⏱️ Pomodoro State
+interface PomodoroState {
+  isRunning: boolean
+  timeLeft: number
+  totalSessions: number
+  focusMode: boolean
+  startPomodoro: (duration: number) => void
+  pausePomodoro: () => void
+  tickPomodoro: () => void
+  resetPomodoro: () => void
+  toggleFocusMode: () => void
+}
+
+// 💾 AppState tổng thể
 interface AppState {
   theme: "light" | "dark"
   language: Language
   user: User | null
   isAuthenticated: boolean
 
-  // Media player state
+  // 🎧 Media
   mediaPlayer: MediaPlayerState | null
+  globalMedia: MediaItem | null
+  setGlobalMedia: (media: MediaItem | null) => void
 
-  // Sections state
+  // 🌳 Forest
+  forest: ForestState
+
+  // ⏱️ Pomodoro
+  pomodoro: PomodoroState
+
+  // 🧩 Sections
   sections: Section[]
+  setSections: (sections: Section[]) => void
+  toggleSection: (id: string) => void
+  reorderSections: (sections: Section[]) => void
 
-  // Mobile state
+  // 📱 Sidebar
   sidebarOpen: boolean
+  toggleSidebar: () => void
+  closeSidebar: () => void
 
-  // Actions
+  // 👤 User
   setTheme: (theme: "light" | "dark") => void
-  setLanguage: (language: Language) => void
   toggleTheme: () => void
+  setLanguage: (language: Language) => void
   login: (email: string, password: string) => boolean
   logout: () => void
   register: (email: string, password: string, name: string) => boolean
   setUser: (user: User) => void
 
-  // Media player actions
+  // 🎧 Media controls
   setMediaPlayer: (state: MediaPlayerState) => void
   updateMediaPosition: (position: number) => void
   togglePlayback: () => void
   setVolume: (volume: number) => void
-
-  // Section actions
-  setSections: (sections: Section[]) => void
-  toggleSection: (id: string) => void
-  reorderSections: (sections: Section[]) => void
-
-  // Mobile actions
-  toggleSidebar: () => void
-  closeSidebar: () => void
 }
 
 export const useAppStore = create<AppState>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       theme: "dark",
       language: "vi",
       user: null,
       isAuthenticated: false,
       mediaPlayer: null,
+      globalMedia: null,
+
+      // 🌳 Forest gamification
+      forest: {
+        level: 1,
+        trees: 0,
+        growTree: () =>
+          set((state) => {
+            const newCount = state.forest.trees + 1
+            const newLevel = Math.floor(newCount / 5) + 1
+            return {
+              forest: { ...state.forest, trees: newCount, level: newLevel },
+            }
+          }),
+        resetForest: () =>
+          set({
+            forest: {
+              level: 1,
+              trees: 0,
+              growTree: get().forest.growTree,
+              resetForest: get().forest.resetForest,
+            },
+          }),
+      },
+
+      // ⏱️ Pomodoro state
+      pomodoro: {
+        isRunning: false,
+        timeLeft: 25 * 60,
+        totalSessions: 0,
+        focusMode: false,
+        startPomodoro: (duration: number) =>
+          set((state) => ({
+            pomodoro: { ...state.pomodoro, isRunning: true, timeLeft: duration },
+          })),
+        pausePomodoro: () =>
+          set((state) => ({
+            pomodoro: { ...state.pomodoro, isRunning: false },
+          })),
+        tickPomodoro: () => {
+          const p = get().pomodoro
+          if (p.isRunning && p.timeLeft > 0) {
+            set({
+              pomodoro: { ...p, timeLeft: p.timeLeft - 1 },
+            })
+          } else if (p.isRunning && p.timeLeft === 0) {
+            // ⏰ Hoàn thành → trồng cây 🌳
+            get().forest.growTree()
+            set({
+              pomodoro: {
+                ...p,
+                isRunning: false,
+                totalSessions: p.totalSessions + 1,
+                timeLeft: 25 * 60,
+              },
+            })
+          }
+        },
+        resetPomodoro: () =>
+          set({
+            pomodoro: {
+              isRunning: false,
+              timeLeft: 25 * 60,
+              totalSessions: 0,
+              focusMode: false,
+              startPomodoro: get().pomodoro.startPomodoro,
+              pausePomodoro: get().pomodoro.pausePomodoro,
+              tickPomodoro: get().pomodoro.tickPomodoro,
+              resetPomodoro: get().pomodoro.resetPomodoro,
+              toggleFocusMode: get().pomodoro.toggleFocusMode,
+            },
+          }),
+        toggleFocusMode: () =>
+          set((state) => ({
+            pomodoro: {
+              ...state.pomodoro,
+              focusMode: !state.pomodoro.focusMode,
+            },
+          })),
+      },
+
       sections: [],
       sidebarOpen: false,
 
+      // 🎨 Theme & Language
       setTheme: (theme) => set({ theme }),
+      toggleTheme: () =>
+        set((state) => ({
+          theme: state.theme === "light" ? "dark" : "light",
+        })),
       setLanguage: (language) => set({ language }),
-      toggleTheme: () => set((state) => ({ theme: state.theme === "light" ? "dark" : "light" })),
 
+      // 🔐 Auth
       login: (email, password) => {
-        // Demo accounts with different roles
-        const demoAccounts: Record<string, { password: string; user: User }> = {
+        const demoUsers: Record<string, { password: string; user: User }> = {
           longvsm: {
             password: "123456",
             user: {
@@ -85,35 +206,9 @@ export const useAppStore = create<AppState>()(
               createdAt: new Date(),
             },
           },
-          leader: {
-            password: "123456",
-            user: {
-              id: "3",
-              email: "leader@lifeos.com",
-              name: "Team Leader",
-              role: "leader",
-              orgId: "org-1",
-              teamId: "team-1",
-              avatar: "/inspirational-leader.png",
-              createdAt: new Date(),
-            },
-          },
-          staff: {
-            password: "123456",
-            user: {
-              id: "4",
-              email: "staff@lifeos.com",
-              name: "Staff Member",
-              role: "staff",
-              orgId: "org-1",
-              teamId: "team-1",
-              avatar: "/diverse-office-staff.png",
-              createdAt: new Date(),
-            },
-          },
         }
 
-        const account = demoAccounts[email]
+        const account = demoUsers[email]
         if (account && account.password === password) {
           set({ user: account.user, isAuthenticated: true })
           return true
@@ -121,7 +216,14 @@ export const useAppStore = create<AppState>()(
         return false
       },
 
-      logout: () => set({ user: null, isAuthenticated: false, mediaPlayer: null }),
+      logout: () =>
+        set({
+          user: null,
+          isAuthenticated: false,
+          mediaPlayer: null,
+          globalMedia: null,
+          forest: { ...get().forest, trees: 0, level: 1 },
+        }),
 
       register: (email, password, name) => {
         const newUser: User = {
@@ -139,31 +241,43 @@ export const useAppStore = create<AppState>()(
 
       setUser: (user) => set({ user }),
 
-      // Media player actions
+      // 🎧 Media controls
       setMediaPlayer: (mediaPlayer) => set({ mediaPlayer }),
       updateMediaPosition: (position) =>
         set((state) => ({
-          mediaPlayer: state.mediaPlayer ? { ...state.mediaPlayer, position } : null,
+          mediaPlayer: state.mediaPlayer
+            ? { ...state.mediaPlayer, position }
+            : null,
         })),
       togglePlayback: () =>
         set((state) => ({
-          mediaPlayer: state.mediaPlayer ? { ...state.mediaPlayer, playing: !state.mediaPlayer.playing } : null,
+          mediaPlayer: state.mediaPlayer
+            ? { ...state.mediaPlayer, playing: !state.mediaPlayer.playing }
+            : null,
         })),
       setVolume: (volume) =>
         set((state) => ({
-          mediaPlayer: state.mediaPlayer ? { ...state.mediaPlayer, volume } : null,
+          mediaPlayer: state.mediaPlayer
+            ? { ...state.mediaPlayer, volume }
+            : null,
         })),
 
-      // Section actions
+      // 🌍 Global Media
+      setGlobalMedia: (media) => set({ globalMedia: media }),
+
+      // 🧩 Sections
       setSections: (sections) => set({ sections }),
       toggleSection: (id) =>
         set((state) => ({
-          sections: state.sections.map((s) => (s.id === id ? { ...s, visible: !s.visible } : s)),
+          sections: state.sections.map((s) =>
+            s.id === id ? { ...s, visible: !s.visible } : s,
+          ),
         })),
       reorderSections: (sections) => set({ sections }),
 
-      // Mobile actions
-      toggleSidebar: () => set((state) => ({ sidebarOpen: !state.sidebarOpen })),
+      // 📱 Sidebar
+      toggleSidebar: () =>
+        set((state) => ({ sidebarOpen: !state.sidebarOpen })),
       closeSidebar: () => set({ sidebarOpen: false }),
     }),
     {

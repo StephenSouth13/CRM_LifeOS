@@ -2,27 +2,50 @@
 
 import { useState } from "react"
 import { useAppStore } from "@/lib/store"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Input } from "@/components/ui/input"
-import { Music, Video, Play, Plus } from "lucide-react"
-import { PomodoroTimer } from "./pomodoro-timer"
-import type { MediaPlayerState } from "@/lib/types"
+import { Music, Video, Plus, LogIn } from "lucide-react"
+import Image from "next/image"
+import { PomodoroTimer } from "./PomodoroTimer"
+import { MediaGlobalPlayer } from "./media_global_player"
 
 const sampleMedia = {
   youtube: [
-    { id: "dQw4w9WgXcQ", title: "Lofi Hip Hop Radio", type: "youtube" as const },
-    { id: "jfKfPfyJRdk", title: "Relaxing Music", type: "youtube" as const },
+    {
+      id: "dQw4w9WgXcQ",
+      title: "Lofi Hip Hop Radio",
+      thumbnail: "https://img.youtube.com/vi/dQw4w9WgXcQ/hqdefault.jpg",
+      type: "youtube" as const,
+    },
+    {
+      id: "jfKfPfyJRdk",
+      title: "Relaxing Music",
+      thumbnail: "https://img.youtube.com/vi/jfKfPfyJRdk/hqdefault.jpg",
+      type: "youtube" as const,
+    },
   ],
   spotify: [
-    { id: "3n3Ppam7vgaVa1iaRUc9Lp", title: "Mr. Brightside", type: "spotify" as const },
-    { id: "0VjIjW4GlUZAMYd2vXMi3b", title: "Blinding Lights", type: "spotify" as const },
+    {
+      id: "3n3Ppam7vgaVa1iaRUc9Lp",
+      title: "Mr. Brightside",
+      thumbnail:
+        "https://i.scdn.co/image/ab67616d0000b2731a2e9a0f63a44a8c83eeb0f0",
+      type: "spotify" as const,
+    },
+    {
+      id: "0VjIjW4GlUZAMYd2vXMi3b",
+      title: "Blinding Lights",
+      thumbnail:
+        "https://i.scdn.co/image/ab67616d0000b2738f76d2dfb9c80f1f8a3a6e04",
+      type: "spotify" as const,
+    },
   ],
 }
 
 export function MediaSection() {
-  const { user, setMediaPlayer } = useAppStore()
+  const { user, setGlobalMedia } = useAppStore()
   const [youtubeUrl, setYoutubeUrl] = useState("")
   const [spotifyUrl, setSpotifyUrl] = useState("")
 
@@ -36,35 +59,19 @@ export function MediaSection() {
     return match ? match[1] : null
   }
 
-  const playMedia = (media: { id: string; title: string; type: "youtube" | "spotify" }) => {
-    if (!user) return
-
-    const mediaState: MediaPlayerState = {
-      userId: user.id,
-      orgId: user.orgId,
-      sessionId: Date.now().toString(),
-      currentMedia: {
-        type: media.type,
-        id: media.id,
-        title: media.title,
-        url:
-          media.type === "youtube"
-            ? `https://youtube.com/watch?v=${media.id}`
-            : `https://open.spotify.com/track/${media.id}`,
-      },
-      position: 0,
-      playing: true,
-      volume: 70,
-      playlist: [],
-    }
-
-    setMediaPlayer(mediaState)
+  const handlePlay = (media: any) => {
+    if (!user) return alert("Vui lòng đăng nhập để nghe 🎧")
+    setGlobalMedia(media)
   }
 
   const handleAddYoutube = () => {
     const id = extractYoutubeId(youtubeUrl)
     if (id) {
-      playMedia({ id, title: "YouTube Video", type: "youtube" })
+      setGlobalMedia({
+        id,
+        title: "Custom YouTube Video",
+        type: "youtube",
+      })
       setYoutubeUrl("")
     }
   }
@@ -72,38 +79,42 @@ export function MediaSection() {
   const handleAddSpotify = () => {
     const id = extractSpotifyId(spotifyUrl)
     if (id) {
-      playMedia({ id, title: "Spotify Track", type: "spotify" })
+      setGlobalMedia({
+        id,
+        title: "Custom Spotify Track",
+        type: "spotify",
+      })
       setSpotifyUrl("")
     }
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8 max-w-7xl mx-auto">
       <div>
-        <h2 className="text-2xl font-bold">Media & Tools</h2>
-        <p className="text-muted-foreground">Music, videos, and productivity tools</p>
+        <h2 className="text-3xl font-bold tracking-tight">🎧 Media Studio</h2>
+        <p className="text-muted-foreground">
+          Nghe nhạc, xem video và tập trung cùng Pomodoro Garden 🌿
+        </p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Media Player */}
-        <div className="lg:col-span-2">
+        <div className="lg:col-span-2 space-y-6">
           <Card>
             <CardHeader>
               <CardTitle>Media Library</CardTitle>
             </CardHeader>
             <CardContent>
-              <Tabs defaultValue="youtube">
-                <TabsList className="grid w-full grid-cols-2">
+              <Tabs defaultValue="youtube" className="w-full">
+                <TabsList className="grid grid-cols-2 w-full">
                   <TabsTrigger value="youtube">
-                    <Video className="h-4 w-4 mr-2" />
-                    YouTube
+                    <Video className="h-4 w-4 mr-2" /> YouTube
                   </TabsTrigger>
                   <TabsTrigger value="spotify">
-                    <Music className="h-4 w-4 mr-2" />
-                    Spotify
+                    <Music className="h-4 w-4 mr-2" /> Spotify
                   </TabsTrigger>
                 </TabsList>
 
+                {/* YouTube Tab */}
                 <TabsContent value="youtube" className="space-y-4">
                   <div className="flex gap-2">
                     <Input
@@ -112,32 +123,52 @@ export function MediaSection() {
                       onChange={(e) => setYoutubeUrl(e.target.value)}
                     />
                     <Button onClick={handleAddYoutube}>
-                      <Plus className="h-4 w-4 mr-2" />
-                      Add
+                      <Plus className="h-4 w-4 mr-2" /> Add
                     </Button>
                   </div>
 
-                  <div className="space-y-2">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     {sampleMedia.youtube.map((media) => (
                       <div
                         key={media.id}
-                        className="flex items-center justify-between p-3 rounded-lg border hover:bg-accent/50 transition-colors"
+                        className="rounded-xl overflow-hidden border hover:shadow-md transition"
                       >
-                        <div className="flex items-center gap-3">
-                          <div className="h-10 w-10 rounded bg-red-500/10 flex items-center justify-center">
-                            <Video className="h-5 w-5 text-red-500" />
+                        <div className="relative">
+                          <Image
+                            src={media.thumbnail}
+                            alt={media.title}
+                            width={400}
+                            height={225}
+                            className="w-full h-40 object-cover"
+                          />
+                          <div className="absolute inset-0 bg-black/40 opacity-0 hover:opacity-100 flex items-center justify-center transition">
+                            {user ? (
+                              <Button
+                                size="sm"
+                                variant="secondary"
+                                onClick={() => handlePlay(media)}
+                              >
+                                Play ▶
+                              </Button>
+                            ) : (
+                              <Button variant="outline" disabled>
+                                <LogIn className="h-4 w-4 mr-2" /> Login
+                              </Button>
+                            )}
                           </div>
-                          <span className="font-medium">{media.title}</span>
                         </div>
-                        <Button size="sm" onClick={() => playMedia(media)}>
-                          <Play className="h-4 w-4 mr-2" />
-                          Play
-                        </Button>
+                        <div className="p-3">
+                          <p className="font-medium truncate">{media.title}</p>
+                          <p className="text-xs text-muted-foreground">
+                            YouTube
+                          </p>
+                        </div>
                       </div>
                     ))}
                   </div>
                 </TabsContent>
 
+                {/* Spotify Tab */}
                 <TabsContent value="spotify" className="space-y-4">
                   <div className="flex gap-2">
                     <Input
@@ -146,27 +177,46 @@ export function MediaSection() {
                       onChange={(e) => setSpotifyUrl(e.target.value)}
                     />
                     <Button onClick={handleAddSpotify}>
-                      <Plus className="h-4 w-4 mr-2" />
-                      Add
+                      <Plus className="h-4 w-4 mr-2" /> Add
                     </Button>
                   </div>
 
-                  <div className="space-y-2">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     {sampleMedia.spotify.map((media) => (
                       <div
                         key={media.id}
-                        className="flex items-center justify-between p-3 rounded-lg border hover:bg-accent/50 transition-colors"
+                        className="rounded-xl overflow-hidden border hover:shadow-md transition"
                       >
-                        <div className="flex items-center gap-3">
-                          <div className="h-10 w-10 rounded bg-emerald-500/10 flex items-center justify-center">
-                            <Music className="h-5 w-5 text-emerald-500" />
+                        <div className="relative">
+                          <Image
+                            src={media.thumbnail}
+                            alt={media.title}
+                            width={400}
+                            height={225}
+                            className="w-full h-40 object-cover"
+                          />
+                          <div className="absolute inset-0 bg-black/40 opacity-0 hover:opacity-100 flex items-center justify-center transition">
+                            {user ? (
+                              <Button
+                                size="sm"
+                                variant="secondary"
+                                onClick={() => handlePlay(media)}
+                              >
+                                Play ▶
+                              </Button>
+                            ) : (
+                              <Button variant="outline" disabled>
+                                <LogIn className="h-4 w-4 mr-2" /> Login
+                              </Button>
+                            )}
                           </div>
-                          <span className="font-medium">{media.title}</span>
                         </div>
-                        <Button size="sm" onClick={() => playMedia(media)}>
-                          <Play className="h-4 w-4 mr-2" />
-                          Play
-                        </Button>
+                        <div className="p-3">
+                          <p className="font-medium truncate">{media.title}</p>
+                          <p className="text-xs text-muted-foreground">
+                            Spotify
+                          </p>
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -176,11 +226,14 @@ export function MediaSection() {
           </Card>
         </div>
 
-        {/* Pomodoro Timer */}
+        {/* Pomodoro bên phải */}
         <div>
           <PomodoroTimer />
         </div>
       </div>
+
+      {/* Player nổi cố định */}
+      <MediaGlobalPlayer />
     </div>
   )
 }
