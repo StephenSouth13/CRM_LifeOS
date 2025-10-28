@@ -1,18 +1,14 @@
 import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
 
+// This function can be marked `async` if using `await` inside
 export function middleware(request: NextRequest) {
-  // Get the pathname of the request
-  const path = request.nextUrl.pathname
-
-  // Define public paths that don't require authentication
-  const isPublicPath = path.startsWith("/auth/")
-
-  // For now, we'll allow all paths since we're using client-side auth
-  // In production, you'd check for auth tokens here
+  // For now, we are not protecting any routes. 
+  // We will simply pass the request through.
   return NextResponse.next()
 }
 
+// See "Matching Paths" below to learn more
 export const config = {
   matcher: [
     /*

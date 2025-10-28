@@ -1,287 +1,175 @@
 import { create } from "zustand"
-import { persist } from "zustand/middleware"
-import type { Language } from "./i18n"
-import type { User, MediaPlayerState, Section } from "./types"
+import { persist, createJSONStorage } from "zustand/middleware"
+import type { User, Role, Permission, UserStatus } from "@/lib/types"
+import { ROLE_PERMISSIONS } from "@/lib/permissions"
 
-// 🎧 Global Media item
-export interface MediaItem {
-  id: string
-  title: string
-  platform: "youtube" | "spotify" | "lofi"
-  url?: string
-  thumbnail?: string
-  currentTime?: number
-}
+// A mock organization ID for the demo
+const ORG_ID = "org-1"
 
-// 🌳 Forest State
-interface ForestState {
-  level: number
-  trees: number
-  growTree: () => void
-  resetForest: () => void
-}
-
-// ⏱️ Pomodoro State
-interface PomodoroState {
-  isRunning: boolean
-  timeLeft: number
-  totalSessions: number
-  focusMode: boolean
-  startPomodoro: (duration: number) => void
-  pausePomodoro: () => void
-  tickPomodoro: () => void
-  resetPomodoro: () => void
-  toggleFocusMode: () => void
-}
-
-// 💾 AppState tổng thể
 interface AppState {
-  theme: "light" | "dark"
-  language: Language
   user: User | null
   isAuthenticated: boolean
-
-  // 🎧 Media
-  mediaPlayer: MediaPlayerState | null
-  globalMedia: MediaItem | null
-  setGlobalMedia: (media: MediaItem | null) => void
-
-  // 🌳 Forest
-  forest: ForestState
-
-  // ⏱️ Pomodoro
-  pomodoro: PomodoroState
-
-  // 🧩 Sections
-  sections: Section[]
-  setSections: (sections: Section[]) => void
-  toggleSection: (id: string) => void
-  reorderSections: (sections: Section[]) => void
-
-  // 📱 Sidebar
   sidebarOpen: boolean
+  language: "vi" | "en"
+  users: Record<string, User>
+  pendingUsers: Record<string, User>
+  login: (credentials: { email: string }) => Promise<User | null>
+  logout: () => void
+  register: (
+    userData: Omit<User, "id" | "createdAt" | "orgId" | "status" | "role"> & {
+      role?: Role
+    },
+  ) => Promise<boolean>
+  approveUser: (email: string) => void
+  denyUser: (email: string) => void
+  setLanguage: (language: "vi" | "en") => void
+  hasPermission: (permission: Permission) => boolean
   toggleSidebar: () => void
   closeSidebar: () => void
-
-  // 👤 User
-  setTheme: (theme: "light" | "dark") => void
-  toggleTheme: () => void
-  setLanguage: (language: Language) => void
-  login: (email: string, password: string) => boolean
-  logout: () => void
-  register: (email: string, password: string, name: string) => boolean
-  setUser: (user: User) => void
-
-  // 🎧 Media controls
-  setMediaPlayer: (state: MediaPlayerState) => void
-  updateMediaPosition: (position: number) => void
-  togglePlayback: () => void
-  setVolume: (volume: number) => void
 }
 
 export const useAppStore = create<AppState>()(
   persist(
     (set, get) => ({
-      theme: "dark",
-      language: "vi",
+      // -- STATE --
       user: null,
       isAuthenticated: false,
-      mediaPlayer: null,
-      globalMedia: null,
-
-      // 🌳 Forest gamification
-      forest: {
-        level: 1,
-        trees: 0,
-        growTree: () =>
-          set((state) => {
-            const newCount = state.forest.trees + 1
-            const newLevel = Math.floor(newCount / 5) + 1
-            return {
-              forest: { ...state.forest, trees: newCount, level: newLevel },
-            }
-          }),
-        resetForest: () =>
-          set({
-            forest: {
-              level: 1,
-              trees: 0,
-              growTree: get().forest.growTree,
-              resetForest: get().forest.resetForest,
-            },
-          }),
-      },
-
-      // ⏱️ Pomodoro state
-      pomodoro: {
-        isRunning: false,
-        timeLeft: 25 * 60,
-        totalSessions: 0,
-        focusMode: false,
-        startPomodoro: (duration: number) =>
-          set((state) => ({
-            pomodoro: { ...state.pomodoro, isRunning: true, timeLeft: duration },
-          })),
-        pausePomodoro: () =>
-          set((state) => ({
-            pomodoro: { ...state.pomodoro, isRunning: false },
-          })),
-        tickPomodoro: () => {
-          const p = get().pomodoro
-          if (p.isRunning && p.timeLeft > 0) {
-            set({
-              pomodoro: { ...p, timeLeft: p.timeLeft - 1 },
-            })
-          } else if (p.isRunning && p.timeLeft === 0) {
-            // ⏰ Hoàn thành → trồng cây 🌳
-            get().forest.growTree()
-            set({
-              pomodoro: {
-                ...p,
-                isRunning: false,
-                totalSessions: p.totalSessions + 1,
-                timeLeft: 25 * 60,
-              },
-            })
-          }
-        },
-        resetPomodoro: () =>
-          set({
-            pomodoro: {
-              isRunning: false,
-              timeLeft: 25 * 60,
-              totalSessions: 0,
-              focusMode: false,
-              startPomodoro: get().pomodoro.startPomodoro,
-              pausePomodoro: get().pomodoro.pausePomodoro,
-              tickPomodoro: get().pomodoro.tickPomodoro,
-              resetPomodoro: get().pomodoro.resetPomodoro,
-              toggleFocusMode: get().pomodoro.toggleFocusMode,
-            },
-          }),
-        toggleFocusMode: () =>
-          set((state) => ({
-            pomodoro: {
-              ...state.pomodoro,
-              focusMode: !state.pomodoro.focusMode,
-            },
-          })),
-      },
-
-      sections: [],
       sidebarOpen: false,
-
-      // 🎨 Theme & Language
-      setTheme: (theme) => set({ theme }),
-      toggleTheme: () =>
-        set((state) => ({
-          theme: state.theme === "light" ? "dark" : "light",
-        })),
-      setLanguage: (language) => set({ language }),
-
-      // 🔐 Auth
-      login: (email, password) => {
-        const demoUsers: Record<string, { password: string; user: User }> = {
-          longvsm: {
-            password: "123456",
-            user: {
-              id: "1",
-              email: "longvsm@lifeos.com",
-              name: "Long VSM",
-              role: "owner",
-              orgId: "org-1",
-              avatar: "/person-holding-keys.png",
-              createdAt: new Date(),
-            },
-          },
-          admin: {
-            password: "123456",
-            user: {
-              id: "2",
-              email: "admin@lifeos.com",
-              name: "Admin User",
-              role: "admin",
-              orgId: "org-1",
-              avatar: "/admin-interface.png",
-              createdAt: new Date(),
-            },
-          },
-        }
-
-        const account = demoUsers[email]
-        if (account && account.password === password) {
-          set({ user: account.user, isAuthenticated: true })
-          return true
-        }
-        return false
+      language: "vi",
+      pendingUsers: {},
+      users: {
+        "longvsm@lifeos.com": {
+          id: "1",
+          name: "VSM Long",
+          email: "longvsm@lifeos.com",
+          role: "owner",
+          orgId: ORG_ID,
+          avatar: "/person-holding-keys.png",
+          createdAt: new Date(),
+          status: "active",
+        },
+        "admin@hrm.com": {
+          id: "2",
+          name: "Admin User",
+          email: "admin@hrm.com",
+          role: "admin",
+          orgId: ORG_ID,
+          avatar: "/admin-interface.png",
+          createdAt: new Date(),
+          status: "active",
+        },
+        "user@hrm.com": {
+          id: "3",
+          name: "Staff User",
+          email: "user@hrm.com",
+          role: "staff",
+          orgId: ORG_ID,
+          avatar: "/space-background.png",
+          createdAt: new Date(),
+          status: "active",
+        },
       },
 
-      logout: () =>
-        set({
-          user: null,
-          isAuthenticated: false,
-          mediaPlayer: null,
-          globalMedia: null,
-          forest: { ...get().forest, trees: 0, level: 1 },
-        }),
+      // -- ACTIONS --
+      login: async ({ email }) => {
+        await new Promise((resolve) => setTimeout(resolve, 500))
+        if (typeof email !== "string") return null
 
-      register: (email, password, name) => {
-        const newUser: User = {
-          id: Date.now().toString(),
-          email,
-          name,
-          role: "staff",
-          orgId: "org-1",
-          avatar: "/abstract-geometric-shapes.png",
-          createdAt: new Date(),
+        const user = get().users[email.toLowerCase()]
+
+        if (user && user.status === "active") {
+          set({ user, isAuthenticated: true })
+          return user
         }
-        set({ user: newUser, isAuthenticated: true })
+
+        set({ user: null, isAuthenticated: false })
+        return null
+      },
+
+      logout: () => {
+        set({ user: null, isAuthenticated: false, sidebarOpen: false })
+        if (typeof window !== "undefined") {
+          window.location.href = "/auth/login"
+        }
+      },
+
+      register: async (userData) => {
+        await new Promise((resolve) => setTimeout(resolve, 500))
+        const email = userData.email.toLowerCase()
+
+        if (get().users[email] || get().pendingUsers[email]) {
+          return false // User already exists
+        }
+
+        const newUser: User = {
+          ...userData,
+          id: `user-${Date.now()}`,
+          createdAt: new Date(),
+          orgId: ORG_ID,
+          status: "pending",
+          role: userData.role || "staff", // Default to 'staff' if not provided
+        }
+
+        set((state) => ({
+          pendingUsers: { ...state.pendingUsers, [email]: newUser },
+        }))
+
         return true
       },
 
-      setUser: (user) => set({ user }),
+      approveUser: (email) => {
+        set((state) => {
+          const userToApprove = state.pendingUsers[email]
+          if (!userToApprove) return {}
 
-      // 🎧 Media controls
-      setMediaPlayer: (mediaPlayer) => set({ mediaPlayer }),
-      updateMediaPosition: (position) =>
-        set((state) => ({
-          mediaPlayer: state.mediaPlayer
-            ? { ...state.mediaPlayer, position }
-            : null,
-        })),
-      togglePlayback: () =>
-        set((state) => ({
-          mediaPlayer: state.mediaPlayer
-            ? { ...state.mediaPlayer, playing: !state.mediaPlayer.playing }
-            : null,
-        })),
-      setVolume: (volume) =>
-        set((state) => ({
-          mediaPlayer: state.mediaPlayer
-            ? { ...state.mediaPlayer, volume }
-            : null,
-        })),
+          const approvedUser: User = { ...userToApprove, status: "active" }
 
-      // 🌍 Global Media
-      setGlobalMedia: (media) => set({ globalMedia: media }),
+          const newUsers = { ...state.users, [email]: approvedUser }
+          const newPending = { ...state.pendingUsers }
+          delete newPending[email]
 
-      // 🧩 Sections
-      setSections: (sections) => set({ sections }),
-      toggleSection: (id) =>
-        set((state) => ({
-          sections: state.sections.map((s) =>
-            s.id === id ? { ...s, visible: !s.visible } : s,
-          ),
-        })),
-      reorderSections: (sections) => set({ sections }),
+          return { users: newUsers, pendingUsers: newPending }
+        })
+      },
 
-      // 📱 Sidebar
-      toggleSidebar: () =>
-        set((state) => ({ sidebarOpen: !state.sidebarOpen })),
+      denyUser: (email) => {
+        set((state) => {
+          const newPending = { ...state.pendingUsers }
+          delete newPending[email]
+          return { pendingUsers: newPending }
+        })
+      },
+
+      setLanguage: (language) => set({ language }),
+
+      hasPermission: (permission) => {
+        const user = get().user
+        if (!user) return false
+        const userPermissions = ROLE_PERMISSIONS[user.role] || []
+        return userPermissions.includes(permission)
+      },
+
+      toggleSidebar: () => set((state) => ({ sidebarOpen: !state.sidebarOpen })),
       closeSidebar: () => set({ sidebarOpen: false }),
     }),
     {
-      name: "life-os-storage",
+      name: "app-storage", // name of the item in the storage (must be unique)
+      storage: createJSONStorage(() => localStorage),
+      // A custom merge function to handle Date objects during rehydration
+      merge: (persistedState, currentState) => {
+        const merged = { ...currentState, ...(persistedState as object) }
+        // Rekindle Date objects
+        if (merged.user) {
+          merged.user.createdAt = new Date(merged.user.createdAt)
+        }
+        Object.values(merged.users).forEach((user: any) => {
+          user.createdAt = new Date(user.createdAt)
+        })
+        Object.values(merged.pendingUsers).forEach((user: any) => {
+          user.createdAt = new Date(user.createdAt)
+        })
+        return merged
+      },
     },
   ),
 )
