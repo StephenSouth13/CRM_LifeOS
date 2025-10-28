@@ -9,13 +9,16 @@ export default function HomePage() {
   const isAuthenticated = useAppStore((state) => state.isAuthenticated)
 
   useEffect(() => {
+    // Based on the authentication state, redirect the user to the appropriate page
     if (isAuthenticated) {
       router.push("/dashboard")
     } else {
-      router.push("/auth/login")
+      // If the user is not authenticated, redirect to the login page
+      router.push("/login")
     }
   }, [isAuthenticated, router])
 
+  // Render a loading indicator while the redirect is in progress
   return (
     <div className="flex min-h-screen items-center justify-center">
       <div className="flex items-center gap-2">
