@@ -10,51 +10,24 @@ import { Calendar, MoreVertical, User } from "lucide-react"
 import { motion } from "framer-motion"
 
 const mockTasks = [
-  {
-    id: 1,
-    title: "Update project documentation",
-    description: "Review and update all project documentation for Q1",
-    priority: "high",
-    status: "inProgress",
-    dueDate: "2025-01-15",
-    assignee: "John Doe",
-  },
-  {
-    id: 2,
-    title: "Review pull requests",
-    description: "Review pending pull requests from team members",
-    priority: "medium",
-    status: "todo",
-    dueDate: "2025-01-14",
-    assignee: "Jane Smith",
-  },
-  {
-    id: 3,
-    title: "Prepare monthly report",
-    description: "Compile and prepare monthly performance report",
-    priority: "high",
-    status: "todo",
-    dueDate: "2025-01-16",
-    assignee: "John Doe",
-  },
-  {
-    id: 4,
-    title: "Team meeting preparation",
-    description: "Prepare agenda and materials for weekly team meeting",
-    priority: "low",
-    status: "completed",
-    dueDate: "2025-01-13",
-    assignee: "Jane Smith",
-  },
-  {
-    id: 5,
-    title: "Code refactoring",
-    description: "Refactor authentication module for better performance",
-    priority: "medium",
-    status: "inProgress",
-    dueDate: "2025-01-18",
-    assignee: "John Doe",
-  },
+    {
+        id: "1",
+        title: "Finish project proposal",
+        description: "Complete the final draft and send for review",
+        status: "inProgress",
+        priority: "high",
+        dueDate: "2024-08-15",
+        assignee: "Alex",
+    },
+    {
+        id: "2",
+        title: "Design new homepage",
+        description: "Create mockups for the new homepage layout",
+        status: "todo",
+        priority: "medium",
+        dueDate: "2024-08-20",
+        assignee: "Sarah",
+    },
 ]
 
 export function TaskList() {

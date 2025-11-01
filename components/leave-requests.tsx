@@ -7,7 +7,7 @@ import { useTranslation } from "@/hooks/use-translation"
 import { useAppStore } from "@/lib/store"
 import { hasPermission } from "@/lib/permissions"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent } from "@/components/ui/card"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -20,43 +20,16 @@ import { motion } from "framer-motion"
 import type { LeaveRequest } from "@/lib/types"
 
 const mockLeaveRequests: LeaveRequest[] = [
-  {
-    id: "1",
-    userId: "4",
-    orgId: "org-1",
-    type: "vacation",
-    startDate: new Date(2025, 0, 20),
-    endDate: new Date(2025, 0, 22),
-    reason: "Family vacation",
-    status: "pending",
-    createdAt: new Date(2025, 0, 10),
-  },
-  {
-    id: "2",
-    userId: "3",
-    orgId: "org-1",
-    type: "sick",
-    startDate: new Date(2025, 0, 15),
-    endDate: new Date(2025, 0, 15),
-    reason: "Medical appointment",
-    status: "approved",
-    reviewerId: "2",
-    reviewedAt: new Date(2025, 0, 14),
-    createdAt: new Date(2025, 0, 13),
-  },
-  {
-    id: "3",
-    userId: "1",
-    orgId: "org-1",
-    type: "personal",
-    startDate: new Date(2025, 0, 25),
-    endDate: new Date(2025, 0, 26),
-    reason: "Personal matters",
-    status: "approved",
-    reviewerId: "2",
-    reviewedAt: new Date(2025, 0, 12),
-    createdAt: new Date(2025, 0, 11),
-  },
+    {
+        id: "1",
+        userId: "2",
+        type: "vacation",
+        status: "pending",
+        startDate: new Date("2024-08-20"),
+        endDate: new Date("2024-08-25"),
+        reason: "Family trip",
+        createdAt: new Date("2024-08-10"),
+    },
 ]
 
 export function LeaveRequests() {
@@ -135,115 +108,100 @@ export function LeaveRequests() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold">{t("leave")}</h2>
-          <p className="text-muted-foreground">Manage leave requests and approvals</p>
-        </div>
-        <Dialog>
-          <DialogTrigger asChild>
-            <Button>
-              <Plus className="h-4 w-4 mr-2" />
-              {t("requestLeave")}
-            </Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>{t("requestLeave")}</DialogTitle>
-            </DialogHeader>
-            <LeaveRequestForm />
-          </DialogContent>
-        </Dialog>
-      </div>
+    <Card>
+      <CardHeader>
+        <CardTitle>{t("leave")}</CardTitle>
+        <CardDescription>Manage leave requests and approvals</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <Tabs value={activeTab} onValueChange={setActiveTab}>
+            <TabsList>
+            <TabsTrigger value="my-requests">My Requests</TabsTrigger>
+            {canApprove && (
+                <>
+                <TabsTrigger value="pending">
+                    Pending Approvals
+                    {pendingApprovals.length > 0 && (
+                    <Badge variant="destructive" className="ml-2">
+                        {pendingApprovals.length}
+                    </Badge>
+                    )}
+                </TabsTrigger>
+                <TabsTrigger value="all">All Requests</TabsTrigger>
+                </>
+            )}
+            </TabsList>
 
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList>
-          <TabsTrigger value="my-requests">My Requests</TabsTrigger>
-          {canApprove && (
-            <>
-              <TabsTrigger value="pending">
-                Pending Approvals
-                {pendingApprovals.length > 0 && (
-                  <Badge variant="destructive" className="ml-2">
-                    {pendingApprovals.length}
-                  </Badge>
-                )}
-              </TabsTrigger>
-              <TabsTrigger value="all">All Requests</TabsTrigger>
-            </>
-          )}
-        </TabsList>
-
-        <TabsContent value="my-requests" className="space-y-4">
-          {myRequests.length > 0 ? (
-            myRequests.map((request) => (
-              <LeaveRequestCard
-                key={request.id}
-                request={request}
-                formatDate={formatDate}
-                getDaysDifference={getDaysDifference}
-                getStatusColor={getStatusColor}
-                getTypeColor={getTypeColor}
-                showActions={false}
-              />
-            ))
-          ) : (
-            <Card>
-              <CardContent className="py-12 text-center text-muted-foreground">
-                <AlertCircle className="h-12 w-12 mx-auto mb-2 opacity-50" />
-                <p>No leave requests</p>
-              </CardContent>
-            </Card>
-          )}
-        </TabsContent>
-
-        {canApprove && (
-          <>
-            <TabsContent value="pending" className="space-y-4">
-              {pendingApprovals.length > 0 ? (
-                pendingApprovals.map((request) => (
-                  <LeaveRequestCard
+            <TabsContent value="my-requests" className="space-y-4">
+            {myRequests.length > 0 ? (
+                myRequests.map((request) => (
+                <LeaveRequestCard
                     key={request.id}
                     request={request}
                     formatDate={formatDate}
                     getDaysDifference={getDaysDifference}
                     getStatusColor={getStatusColor}
                     getTypeColor={getTypeColor}
-                    showActions={true}
-                    onApprove={handleApprove}
-                    onDeny={handleDeny}
-                  />
+                    showActions={false}
+                />
                 ))
-              ) : (
+            ) : (
                 <Card>
-                  <CardContent className="py-12 text-center text-muted-foreground">
-                    <Check className="h-12 w-12 mx-auto mb-2 opacity-50" />
-                    <p>No pending approvals</p>
-                  </CardContent>
+                <CardContent className="py-12 text-center text-muted-foreground">
+                    <AlertCircle className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                    <p>No leave requests</p>
+                </CardContent>
                 </Card>
-              )}
+            )}
             </TabsContent>
 
-            <TabsContent value="all" className="space-y-4">
-              {allRequests.map((request) => (
-                <LeaveRequestCard
-                  key={request.id}
-                  request={request}
-                  formatDate={formatDate}
-                  getDaysDifference={getDaysDifference}
-                  getStatusColor={getStatusColor}
-                  getTypeColor={getTypeColor}
-                  showActions={request.status === "pending"}
-                  onApprove={handleApprove}
-                  onDeny={handleDeny}
-                />
-              ))}
-            </TabsContent>
-          </>
-        )}
-      </Tabs>
-    </div>
+            {canApprove && (
+            <>
+                <TabsContent value="pending" className="space-y-4">
+                {pendingApprovals.length > 0 ? (
+                    pendingApprovals.map((request) => (
+                    <LeaveRequestCard
+                        key={request.id}
+                        request={request}
+                        formatDate={formatDate}
+                        getDaysDifference={getDaysDifference}
+                        getStatusColor={getStatusColor}
+                        getTypeColor={getTypeColor}
+                        showActions={true}
+                        onApprove={handleApprove}
+                        onDeny={handleDeny}
+                    />
+                    ))
+                ) : (
+                    <Card>
+                    <CardContent className="py-12 text-center text-muted-foreground">
+                        <Check className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                        <p>No pending approvals</p>
+                    </CardContent>
+                    </Card>
+                )}
+                </TabsContent>
+
+                <TabsContent value="all" className="space-y-4">
+                {allRequests.map((request) => (
+                    <LeaveRequestCard
+                    key={request.id}
+                    request={request}
+                    formatDate={formatDate}
+                    getDaysDifference={getDaysDifference}
+                    getStatusColor={getStatusColor}
+                    getTypeColor={getTypeColor}
+                    showActions={request.status === "pending"}
+                    onApprove={handleApprove}
+                    onDeny={handleDeny}
+                    />
+                ))}
+                </TabsContent>
+            </>
+            )}
+        </Tabs>
+      </CardContent>
+    </Card>
   )
 }
 
@@ -341,7 +299,7 @@ function LeaveRequestForm() {
     <form onSubmit={handleSubmit} className="space-y-4">
       <div>
         <Label htmlFor="type">{t("leaveType")}</Label>
-        <Select value={type} onValueChange={(value: any) => setType(value)}>
+        <Select value={type} onValue-change={(value: any) => setType(value)}>
           <SelectTrigger>
             <SelectValue />
           </SelectTrigger>

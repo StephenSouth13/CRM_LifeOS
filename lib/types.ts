@@ -1,4 +1,4 @@
-export type Role = "owner" | "admin" | "leader" | "staff"
+export type Role = "owner" | "admin" | "leader" | "staff" | "student" | "mentor"
 
 export type Permission =
   | "org.manage"
@@ -20,6 +20,8 @@ export type Permission =
   | "iframe.embed"
   | "calendar.manage"
   | "leave.approve"
+  | "student.view"
+  | "student.evaluate"
 
 export interface User {
   id: string

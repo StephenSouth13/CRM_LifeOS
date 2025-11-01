@@ -21,6 +21,8 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     "iframe.embed",
     "calendar.manage",
     "leave.approve",
+    "student.view",
+    "student.evaluate",
   ],
   admin: [
     "user.create",
@@ -40,6 +42,8 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     "iframe.embed",
     "calendar.manage",
     "leave.approve",
+    "student.view",
+    "student.evaluate",
   ],
   leader: [
     "user.update", // team only
@@ -55,6 +59,8 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     "iframe.embed",
     "calendar.manage",
     "leave.approve",
+    "student.view",
+    "student.evaluate",
   ],
   staff: [
     "attendance.checkin",
@@ -64,6 +70,13 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     "ai.use",
     "iframe.embed",
   ],
+  student: [
+    "attendance.checkin",
+    "task.create",
+    "notes.create.shared",
+    "ai.use",
+  ],
+  mentor: ["student.view", "student.evaluate", "ai.use"],
 }
 
 export function hasPermission(role: Role, permission: Permission): boolean {
@@ -72,12 +85,14 @@ export function hasPermission(role: Role, permission: Permission): boolean {
 
 export function canManageUser(userRole: Role, targetRole: Role): boolean {
   const hierarchy: Record<Role, number> = {
-    owner: 4,
-    admin: 3,
-    leader: 2,
-    staff: 1,
+    owner: 5,
+    admin: 4,
+    leader: 3,
+    staff: 2,
+    student: 1,
+    mentor: 2, // Mentors can manage students
   }
-  return hierarchy[userRole] > hierarchy[targetRole]
+  return (hierarchy[userRole] ?? 0) > (hierarchy[targetRole] ?? 0)
 }
 
 export function getRoleLabel(role: Role): string {
@@ -86,8 +101,10 @@ export function getRoleLabel(role: Role): string {
     admin: "Admin",
     leader: "Leader",
     staff: "Staff",
+    student: "Student",
+    mentor: "Mentor",
   }
-  return labels[role]
+  return labels[role] ?? "Unknown Role"
 }
 
 export function getRoleColor(role: Role): string {
@@ -96,6 +113,8 @@ export function getRoleColor(role: Role): string {
     admin: "text-blue-500",
     leader: "text-emerald-500",
     staff: "text-gray-500",
+    student: "text-green-500",
+    mentor: "text-orange-500",
   }
-  return colors[role]
+  return colors[role] ?? "text-gray-500"
 }
