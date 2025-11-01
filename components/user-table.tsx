@@ -11,46 +11,6 @@ import { MoreVertical, Search } from "lucide-react"
 import { useState } from "react"
 
 const mockUsers = [
-  {
-    id: 1,
-    name: "John Doe",
-    email: "john.doe@company.com",
-    role: "admin",
-    status: "active",
-    lastLogin: "2025-01-13 14:30",
-  },
-  {
-    id: 2,
-    name: "Jane Smith",
-    email: "jane.smith@company.com",
-    role: "manager",
-    status: "active",
-    lastLogin: "2025-01-13 12:15",
-  },
-  {
-    id: 3,
-    name: "Bob Johnson",
-    email: "bob.johnson@company.com",
-    role: "user",
-    status: "active",
-    lastLogin: "2025-01-13 09:45",
-  },
-  {
-    id: 4,
-    name: "Alice Williams",
-    email: "alice.williams@company.com",
-    role: "user",
-    status: "inactive",
-    lastLogin: "2025-01-10 16:20",
-  },
-  {
-    id: 5,
-    name: "Charlie Brown",
-    email: "charlie.brown@company.com",
-    role: "manager",
-    status: "active",
-    lastLogin: "2025-01-13 11:00",
-  },
 ]
 
 export function UserTable() {

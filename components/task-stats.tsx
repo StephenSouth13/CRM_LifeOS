@@ -10,25 +10,25 @@ export function TaskStats() {
   const stats = [
     {
       title: t("allTasks"),
-      value: "24",
+      value: "0",
       icon: Circle,
       description: "Total tasks",
     },
     {
       title: t("inProgress"),
-      value: "8",
+      value: "0",
       icon: Clock,
       description: "Active now",
     },
     {
       title: t("completed"),
-      value: "14",
+      value: "0",
       icon: CheckCircle2,
       description: "This month",
     },
     {
       title: t("overdue"),
-      value: "2",
+      value: "0",
       icon: AlertCircle,
       description: "Need attention",
     },

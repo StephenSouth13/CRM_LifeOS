@@ -1,13 +1,30 @@
 "use client"
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { useTranslation } from "@/hooks/use-translation"
+import {
+  Activity,
+  CheckCircle,
+  Clock,
+  Users,
+} from "lucide-react"
+
 import { useAppStore } from "@/lib/store"
-import { Activity, Users, CheckCircle, Clock, Calendar, FileText, DoorOpen, CheckSquare } from "lucide-react"
-import { LeaveRequests } from "@/components/leave-requests"
-import { Button } from "@/components/ui/button"
+import { useTranslation } from "@/hooks/use-translation"
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card"
 import { RoleBadge } from "@/components/role-badge"
-import Link from "next/link"
+import { Bar, BarChart, CartesianGrid, XAxis } from "recharts"
+import {
+  ChartContainer,
+  ChartTooltip,
+  ChartTooltipContent,
+} from "@/components/ui/chart"
+import { LeaveRequests } from "@/components/leave-requests"
+import { TaskList } from "@/components/task-list"
 
 export default function DashboardPage() {
   const { t } = useTranslation()
@@ -19,113 +36,106 @@ export default function DashboardPage() {
       value: "98.5%",
       description: "This month",
       icon: Clock,
-      trend: "+2.5%",
     },
     {
       title: t("tasks"),
       value: "24",
       description: "Active tasks",
       icon: CheckCircle,
-      trend: "+4",
     },
     {
       title: "Team Members",
       value: "12",
       description: "Active users",
       icon: Users,
-      trend: "+2",
     },
     {
-      title: t("recentActivity"),
-      value: "156",
+      title: t("productivity"),
+      value: "92%",
       description: "This week",
       icon: Activity,
-      trend: "+12%",
     },
   ]
 
-  const quickLinks = [
-    { href: "/dashboard/attendance", icon: Clock, label: t("attendance") },
-    { href: "/dashboard/tasks", icon: CheckSquare, label: t("tasks") },
-    { href: "/dashboard/calendar", icon: Calendar, label: t("calendar") },
-    { href: "/dashboard/notes", icon: FileText, label: t("notes") },
-    { href: "/dashboard/rooms", icon: DoorOpen, label: t("rooms") },
+  const chartData = [
+    { day: "Monday", tasks: 4, productivity: 80 },
+    { day: "Tuesday", tasks: 6, productivity: 85 },
+    { day: "Wednesday", tasks: 5, productivity: 88 },
+    { day: "Thursday", tasks: 8, productivity: 92 },
+    { day: "Friday", tasks: 7, productivity: 90 },
+    { day: "Saturday", tasks: 2, productivity: 70 },
+    { day: "Sunday", tasks: 1, productivity: 60 },
+  ]
+  
+  const recentActivities = [
+      { action: "Checked in", time: "2 hours ago" },
+      { action: "Completed task: Update documentation", time: "4 hours ago" },
+      { action: "Booked Conference Room A", time: "Yesterday" },
+      { action: "Created note: Meeting notes", time: "2 days ago" },
   ]
 
+
   return (
-    <div className="space-y-6">
-      <div className="flex items-start justify-between gap-4 flex-wrap">
+    <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
+      <div className="flex items-center justify-between space-y-2">
         <div>
-          <h1 className="text-2xl lg:text-3xl font-bold tracking-tight">
-            {t("welcome")}, {user?.name}!
-          </h1>
-          <p className="text-muted-foreground">{t("overview")}</p>
+            <h1 className="text-2xl lg:text-3xl font-bold tracking-tight">
+                {t("welcome")}, {user?.name}!
+            </h1>
+            <p className="text-muted-foreground">{t("overview")}</p>
         </div>
         {user && <RoleBadge role={user.role} />}
       </div>
 
-      {/* Stats Grid */}
-      <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
-        {stats.map((stat) => {
-          const Icon = stat.icon
-          return (
-            <Card key={stat.title}>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-xs lg:text-sm font-medium truncate">{stat.title}</CardTitle>
-                <Icon className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-xl lg:text-2xl font-bold">{stat.value}</div>
-                <p className="text-xs text-muted-foreground">
-                  <span className="text-emerald-500">{stat.trend}</span> {stat.description}
-                </p>
-              </CardContent>
-            </Card>
-          )
-        })}
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        {stats.map((stat) => (
+          <Card key={stat.title}>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">{stat.title}</CardTitle>
+              <stat.icon className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{stat.value}</div>
+              <p className="text-xs text-muted-foreground">{stat.description}</p>
+            </CardContent>
+          </Card>
+        ))}
       </div>
 
-      {/* Quick Links */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Quick Access</CardTitle>
-          <CardDescription>Navigate to your most used features</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
-            {quickLinks.map((link) => {
-              const Icon = link.icon
-              return (
-                <Link key={link.href} href={link.href}>
-                  <Button variant="outline" className="w-full h-20 flex flex-col gap-2 bg-transparent touch-target">
-                    <Icon className="h-5 w-5" />
-                    <span className="text-xs truncate w-full">{link.label}</span>
-                  </Button>
-                </Link>
-              )
-            })}
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Leave Requests Section */}
-      <LeaveRequests />
-
-      {/* Activity and Stats */}
-      <div className="grid gap-4 md:grid-cols-2">
-        <Card>
+      <div className="grid gap-4 lg:grid-cols-7">
+        <Card className="lg:col-span-4">
+          <CardHeader>
+            <CardTitle>Weekly Productivity</CardTitle>
+            <CardDescription>Tasks completed and productivity levels for the week.</CardDescription>
+          </CardHeader>
+          <CardContent className="pl-2">
+            <ChartContainer config={{}} className="h-[350px] w-full">
+              <BarChart data={chartData} accessibilityLayer>
+                <CartesianGrid vertical={false} />
+                <XAxis
+                  dataKey="day"
+                  tickLine={false}
+                  tickMargin={10}
+                  axisLine={false}
+                />
+                <ChartTooltip
+                  content={<ChartTooltipContent hideLabel />}
+                />
+                <Bar dataKey="tasks" fill="var(--color-primary)" radius={8} />
+                <Bar dataKey="productivity" fill="var(--color-accent)" radius={8} />
+              </BarChart>
+            </ChartContainer>
+          </CardContent>
+        </Card>
+        
+        <Card className="lg:col-span-3">
           <CardHeader>
             <CardTitle>{t("recentActivity")}</CardTitle>
             <CardDescription>Your latest actions and updates</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {[
-                { action: "Checked in", time: "2 hours ago", type: "attendance" },
-                { action: "Completed task: Update documentation", time: "4 hours ago", type: "task" },
-                { action: "Booked Conference Room A", time: "Yesterday", type: "booking" },
-                { action: "Created note: Meeting notes", time: "2 days ago", type: "note" },
-              ].map((activity, i) => (
+              {recentActivities.map((activity, i) => (
                 <div key={i} className="flex items-center gap-4">
                   <div className="h-2 w-2 rounded-full bg-emerald-500 flex-shrink-0" />
                   <div className="flex-1 min-w-0">
@@ -137,28 +147,11 @@ export default function DashboardPage() {
             </div>
           </CardContent>
         </Card>
+      </div>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>{t("statistics")}</CardTitle>
-            <CardDescription>Performance metrics overview</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {["Productivity", "Attendance", "Task Completion", "Team Collaboration"].map((metric, i) => (
-                <div key={metric} className="space-y-2">
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="truncate">{metric}</span>
-                    <span className="font-medium flex-shrink-0">{85 + i * 3}%</span>
-                  </div>
-                  <div className="h-2 w-full overflow-hidden rounded-full bg-secondary">
-                    <div className="h-full bg-emerald-500" style={{ width: `${85 + i * 3}%` }} />
-                  </div>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
+      <div className="grid gap-4 md:grid-cols-2">
+        <TaskList />
+        <LeaveRequests />
       </div>
     </div>
   )

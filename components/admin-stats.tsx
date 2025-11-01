@@ -10,31 +10,31 @@ export function AdminStats() {
   const stats = [
     {
       title: t("totalUsers"),
-      value: "156",
+      value: "0",
       icon: Users,
       description: "All registered users",
-      trend: "+12%",
+      trend: "",
     },
     {
       title: t("activeUsers"),
-      value: "142",
+      value: "0",
       icon: UserCheck,
       description: "Currently active",
-      trend: "+8%",
+      trend: "",
     },
     {
       title: t("newUsers"),
-      value: "24",
+      value: "0",
       icon: UserPlus,
       description: "This month",
-      trend: "+18%",
+      trend: "",
     },
     {
       title: t("systemHealth"),
-      value: "99.8%",
+      value: "100%",
       icon: Activity,
       description: "Uptime",
-      trend: "+0.2%",
+      trend: "",
     },
   ]
 

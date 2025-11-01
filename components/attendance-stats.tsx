@@ -10,25 +10,25 @@ export function AttendanceStats() {
   const stats = [
     {
       title: t("thisWeek"),
-      value: "40h 30m",
+      value: "0h 0m",
       icon: Clock,
       description: t("totalHours"),
     },
     {
       title: t("thisMonth"),
-      value: "168h 45m",
+      value: "0h 0m",
       icon: Calendar,
       description: t("totalHours"),
     },
     {
       title: t("averageHours"),
-      value: "8h 15m",
+      value: "0h 0m",
       icon: TrendingUp,
       description: "Per day",
     },
     {
       title: "Attendance Rate",
-      value: "98.5%",
+      value: "0%",
       icon: Award,
       description: t("thisMonth"),
     },

@@ -7,10 +7,10 @@ export function SystemAnalytics() {
   const { t } = useTranslation()
 
   const metrics = [
-    { label: "CPU Usage", value: "45%", color: "bg-accent" },
-    { label: "Memory Usage", value: "62%", color: "bg-primary" },
-    { label: "Disk Usage", value: "38%", color: "bg-chart-3" },
-    { label: "Network Load", value: "28%", color: "bg-chart-4" },
+    { label: "CPU Usage", value: "0%", color: "bg-accent" },
+    { label: "Memory Usage", value: "0%", color: "bg-primary" },
+    { label: "Disk Usage", value: "0%", color: "bg-chart-3" },
+    { label: "Network Load", value: "0%", color: "bg-chart-4" },
   ]
 
   return (
@@ -44,12 +44,7 @@ export function SystemAnalytics() {
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            {[
-              { event: "User login", user: "john.doe@company.com", time: "2 min ago" },
-              { event: "Task created", user: "jane.smith@company.com", time: "15 min ago" },
-              { event: "Report generated", user: "System", time: "1 hour ago" },
-              { event: "User registered", user: "new.user@company.com", time: "2 hours ago" },
-            ].map((activity, i) => (
+            {[].map((activity, i) => (
               <div key={i} className="flex items-center gap-4">
                 <div className="h-2 w-2 rounded-full bg-accent" />
                 <div className="flex-1">

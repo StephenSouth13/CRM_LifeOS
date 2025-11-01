@@ -26,6 +26,11 @@ export const metadata: Metadata = {
     "Project Management",
     "Team Collaboration",
   ],
+  icons: {
+    icon: "/favicon.ico",
+    shortcut: "/favicon.png",
+    apple: "/favicon.png",
+  },
   authors: [{ name: "quachthanhlong", url: "https://quachthanhlong.com" }],
   colorScheme: "dark",
   openGraph: {
