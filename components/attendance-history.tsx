@@ -1,29 +1,49 @@
 "use client"
 
+import { useEffect, useState } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { useTranslation } from "@/hooks/use-translation"
-import { Clock } from "lucide-react"
-
-const mockHistory = [
-  { date: "2025-01-13", checkIn: "08:45", checkOut: "17:30", hours: "8h 45m", status: "present" },
-  { date: "2025-01-12", checkIn: "09:15", checkOut: "17:45", hours: "8h 30m", status: "late" },
-  { date: "2025-01-11", checkIn: "08:30", checkOut: "17:00", hours: "8h 30m", status: "present" },
-  { date: "2025-01-10", checkIn: "08:50", checkOut: "16:30", hours: "7h 40m", status: "earlyLeave" },
-  { date: "2025-01-09", checkIn: "08:40", checkOut: "17:20", hours: "8h 40m", status: "present" },
-]
+import { useAppStore } from "@/lib/store"
+import { Clock, AlertCircle } from "lucide-react"
+import type { AttendanceLog } from "@/lib/types"
 
 export function AttendanceHistory() {
   const { t } = useTranslation()
+  const { user } = useAppStore()
+  const [attendance, setAttendance] = useState<AttendanceLog[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    if (user?.id && user?.orgId) {
+      fetchAttendance()
+    }
+  }, [user?.id, user?.orgId])
+
+  const fetchAttendance = async () => {
+    try {
+      const response = await fetch(
+        `/api/attendance?user_id=${user?.id}&org_id=${user?.orgId}&limit=10`,
+      )
+      if (response.ok) {
+        const data = await response.json()
+        setAttendance(data.logs || [])
+      }
+    } catch (error) {
+      console.error("Failed to fetch attendance:", error)
+    } finally {
+      setLoading(false)
+    }
+  }
 
   const getStatusBadge = (status: string) => {
     const variants: Record<string, { variant: "default" | "secondary" | "destructive" | "outline"; label: string }> = {
-      present: { variant: "default", label: t("present") },
-      late: { variant: "secondary", label: t("late") },
-      absent: { variant: "destructive", label: t("absent") },
-      earlyLeave: { variant: "outline", label: t("earlyLeave") },
+      valid: { variant: "default", label: "Present" },
+      late: { variant: "secondary", label: "Late" },
+      invalid: { variant: "destructive", label: "Absent" },
+      pending: { variant: "outline", label: "Pending" },
     }
-    const config = variants[status] || variants.present
+    const config = variants[status] || variants.valid
     return <Badge variant={config.variant}>{config.label}</Badge>
   }
 
@@ -31,36 +51,51 @@ export function AttendanceHistory() {
     <Card>
       <CardHeader>
         <CardTitle>{t("attendanceHistory")}</CardTitle>
-        <CardDescription>Recent attendance records</CardDescription>
+        <CardDescription>Your recent attendance records</CardDescription>
       </CardHeader>
       <CardContent>
-        <div className="space-y-4">
-          {mockHistory.map((record) => (
-            <div
-              key={record.date}
-              className="flex items-center justify-between rounded-lg border border-border p-4 transition-colors hover:bg-accent/50"
-            >
-              <div className="flex items-center gap-4">
-                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-muted">
-                  <Clock className="h-5 w-5 text-muted-foreground" />
+        {loading ? (
+          <div className="flex items-center justify-center py-8">
+            <p className="text-muted-foreground">Loading attendance history...</p>
+          </div>
+        ) : attendance.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-8 text-center">
+            <AlertCircle className="h-8 w-8 text-muted-foreground mb-2" />
+            <p className="text-muted-foreground">No attendance records found</p>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {attendance.map((record) => (
+              <div
+                key={record.id}
+                className="flex items-center justify-between rounded-lg border border-border p-4 transition-colors hover:bg-accent/50"
+              >
+                <div className="flex items-center gap-4">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-muted">
+                    <Clock className="h-5 w-5 text-muted-foreground" />
+                  </div>
+                  <div>
+                    <p className="font-medium">
+                      {record.check_in_time ? new Date(record.check_in_time).toLocaleDateString() : "—"}
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      {record.check_in_time
+                        ? new Date(record.check_in_time).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+                        : "—"}{" "}
+                      -{" "}
+                      {record.check_out_time
+                        ? new Date(record.check_out_time).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+                        : "—"}
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <p className="font-medium">{new Date(record.date).toLocaleDateString()}</p>
-                  <p className="text-sm text-muted-foreground">
-                    {record.checkIn} - {record.checkOut}
-                  </p>
-                </div>
-              </div>
-              <div className="flex items-center gap-4">
                 <div className="text-right">
-                  <p className="font-medium">{record.hours}</p>
-                  <p className="text-sm text-muted-foreground">{t("workingHours")}</p>
+                  {getStatusBadge(record.status)}
                 </div>
-                {getStatusBadge(record.status)}
               </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
       </CardContent>
     </Card>
   )

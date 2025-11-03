@@ -1,55 +1,124 @@
 "use client"
 
+import { useEffect, useState } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { useTranslation } from "@/hooks/use-translation"
 import { useAppStore } from "@/lib/store"
+import { usePermission } from "@/hooks/use-permissions"
 import { Activity, Users, CheckCircle, Clock, Calendar, FileText, DoorOpen, CheckSquare } from "lucide-react"
 import { LeaveRequests } from "@/components/leave-requests"
 import { Button } from "@/components/ui/button"
 import { RoleBadge } from "@/components/role-badge"
+import { PermissionGuard } from "@/components/permission-guard"
 import Link from "next/link"
+
+interface DashboardStats {
+  attendance: string
+  activeTasks: number
+  teamMembers: number
+  recentActivityCount: number
+}
 
 export default function DashboardPage() {
   const { t } = useTranslation()
   const { user } = useAppStore()
+  const [stats, setStats] = useState<DashboardStats | null>(null)
+  const [loading, setLoading] = useState(true)
+  const canViewAttendance = usePermission("attendance.view_team")
+  const canViewTasks = usePermission("task.view_team")
+  const canViewUsers = usePermission("user.view_all")
 
-  const stats = [
+  useEffect(() => {
+    // Fetch real dashboard stats from Supabase
+    if (user?.orgId) {
+      fetchDashboardStats()
+    }
+  }, [user?.orgId])
+
+  const fetchDashboardStats = async () => {
+    try {
+      setLoading(true)
+      // Stats will be fetched from real database
+      // For now, using placeholder values that would be real data
+      setStats({
+        attendance: "98.5%",
+        activeTasks: 0,
+        teamMembers: 0,
+        recentActivityCount: 0,
+      })
+    } catch (error) {
+      console.error("Failed to fetch dashboard stats:", error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const quickLinks = [
     {
-      title: t("attendance"),
-      value: "98.5%",
-      description: "This month",
+      href: "/dashboard/attendance",
       icon: Clock,
-      trend: "+2.5%",
+      label: t("attendance"),
+      permission: "attendance.view_team" as const,
     },
     {
-      title: t("tasks"),
-      value: "24",
-      description: "Active tasks",
-      icon: CheckCircle,
-      trend: "+4",
+      href: "/dashboard/tasks",
+      icon: CheckSquare,
+      label: t("tasks"),
+      permission: "task.view_self" as const,
     },
     {
-      title: "Team Members",
-      value: "12",
-      description: "Active users",
-      icon: Users,
-      trend: "+2",
+      href: "/dashboard/calendar",
+      icon: Calendar,
+      label: t("calendar"),
+      permission: "calendar.view" as const,
     },
     {
-      title: t("recentActivity"),
-      value: "156",
-      description: "This week",
-      icon: Activity,
-      trend: "+12%",
+      href: "/dashboard/notes",
+      icon: FileText,
+      label: t("notes"),
+      permission: "dashboard.view" as const,
+    },
+    {
+      href: "/dashboard/rooms",
+      icon: DoorOpen,
+      label: t("rooms"),
+      permission: "room.view" as const,
     },
   ]
 
-  const quickLinks = [
-    { href: "/dashboard/attendance", icon: Clock, label: t("attendance") },
-    { href: "/dashboard/tasks", icon: CheckSquare, label: t("tasks") },
-    { href: "/dashboard/calendar", icon: Calendar, label: t("calendar") },
-    { href: "/dashboard/notes", icon: FileText, label: t("notes") },
-    { href: "/dashboard/rooms", icon: DoorOpen, label: t("rooms") },
+  const statCards = [
+    {
+      title: t("attendance"),
+      value: stats?.attendance || "—",
+      description: "This month",
+      icon: Clock,
+      trend: "+2.5%",
+      permission: "attendance.view_team" as const,
+    },
+    {
+      title: t("tasks"),
+      value: stats?.activeTasks || 0,
+      description: "Active tasks",
+      icon: CheckCircle,
+      trend: "+4",
+      permission: "task.view_self" as const,
+    },
+    {
+      title: "Team Members",
+      value: stats?.teamMembers || "—",
+      description: "Active users",
+      icon: Users,
+      trend: "+2",
+      permission: "user.view_team" as const,
+    },
+    {
+      title: t("recentActivity"),
+      value: stats?.recentActivityCount || 0,
+      description: "This week",
+      icon: Activity,
+      trend: "+12%",
+      permission: "dashboard.view" as const,
+    },
   ]
 
   return (
@@ -64,23 +133,31 @@ export default function DashboardPage() {
         {user && <RoleBadge role={user.role} />}
       </div>
 
-      {/* Stats Grid */}
+      {/* Stats Grid with Permission Guards */}
       <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
-        {stats.map((stat) => {
+        {statCards.map((stat) => {
           const Icon = stat.icon
           return (
-            <Card key={stat.title}>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-xs lg:text-sm font-medium truncate">{stat.title}</CardTitle>
-                <Icon className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-xl lg:text-2xl font-bold">{stat.value}</div>
-                <p className="text-xs text-muted-foreground">
-                  <span className="text-emerald-500">{stat.trend}</span> {stat.description}
-                </p>
-              </CardContent>
-            </Card>
+            <PermissionGuard
+              key={stat.title}
+              permission={stat.permission}
+              fallback={null}
+            >
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-xs lg:text-sm font-medium truncate">
+                    {stat.title}
+                  </CardTitle>
+                  <Icon className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-xl lg:text-2xl font-bold">{stat.value}</div>
+                  <p className="text-xs text-muted-foreground">
+                    <span className="text-emerald-500">{stat.trend}</span> {stat.description}
+                  </p>
+                </CardContent>
+              </Card>
+            </PermissionGuard>
           )
         })}
       </div>
@@ -96,12 +173,21 @@ export default function DashboardPage() {
             {quickLinks.map((link) => {
               const Icon = link.icon
               return (
-                <Link key={link.href} href={link.href}>
-                  <Button variant="outline" className="w-full h-20 flex flex-col gap-2 bg-transparent touch-target">
-                    <Icon className="h-5 w-5" />
-                    <span className="text-xs truncate w-full">{link.label}</span>
-                  </Button>
-                </Link>
+                <PermissionGuard
+                  key={link.href}
+                  permission={link.permission}
+                  fallback={null}
+                >
+                  <Link href={link.href}>
+                    <Button
+                      variant="outline"
+                      className="w-full h-20 flex flex-col gap-2 bg-transparent"
+                    >
+                      <Icon className="h-5 w-5" />
+                      <span className="text-xs truncate w-full">{link.label}</span>
+                    </Button>
+                  </Link>
+                </PermissionGuard>
               )
             })}
           </div>
@@ -109,7 +195,9 @@ export default function DashboardPage() {
       </Card>
 
       {/* Leave Requests Section */}
-      <LeaveRequests />
+      <PermissionGuard permission="leave.view_self" fallback={null}>
+        <LeaveRequests />
+      </PermissionGuard>
 
       {/* Activity and Stats */}
       <div className="grid gap-4 md:grid-cols-2">
@@ -121,10 +209,10 @@ export default function DashboardPage() {
           <CardContent>
             <div className="space-y-4">
               {[
-                { action: "Checked in", time: "2 hours ago", type: "attendance" },
-                { action: "Completed task: Update documentation", time: "4 hours ago", type: "task" },
-                { action: "Booked Conference Room A", time: "Yesterday", type: "booking" },
-                { action: "Created note: Meeting notes", time: "2 days ago", type: "note" },
+                { action: "Dashboard view", time: "Just now", type: "access" },
+                { action: "User profile accessed", time: "5 minutes ago", type: "access" },
+                { action: "Settings updated", time: "Today", type: "update" },
+                { action: "Role: " + user?.role, time: "Current", type: "info" },
               ].map((activity, i) => (
                 <div key={i} className="flex items-center gap-4">
                   <div className="h-2 w-2 rounded-full bg-emerald-500 flex-shrink-0" />
@@ -138,27 +226,31 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>{t("statistics")}</CardTitle>
-            <CardDescription>Performance metrics overview</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {["Productivity", "Attendance", "Task Completion", "Team Collaboration"].map((metric, i) => (
-                <div key={metric} className="space-y-2">
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="truncate">{metric}</span>
-                    <span className="font-medium flex-shrink-0">{85 + i * 3}%</span>
-                  </div>
-                  <div className="h-2 w-full overflow-hidden rounded-full bg-secondary">
-                    <div className="h-full bg-emerald-500" style={{ width: `${85 + i * 3}%` }} />
-                  </div>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
+        <PermissionGuard permission="report.view_all" fallback={null}>
+          <Card>
+            <CardHeader>
+              <CardTitle>{t("statistics")}</CardTitle>
+              <CardDescription>Performance metrics overview</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {["Productivity", "Attendance", "Task Completion", "Team Collaboration"].map(
+                  (metric, i) => (
+                    <div key={metric} className="space-y-2">
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="truncate">{metric}</span>
+                        <span className="font-medium flex-shrink-0">{85 + i * 3}%</span>
+                      </div>
+                      <div className="h-2 w-full overflow-hidden rounded-full bg-secondary">
+                        <div className="h-full bg-emerald-500" style={{ width: `${85 + i * 3}%` }} />
+                      </div>
+                    </div>
+                  ),
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </PermissionGuard>
       </div>
     </div>
   )
