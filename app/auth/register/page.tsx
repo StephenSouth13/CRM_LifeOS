@@ -16,6 +16,7 @@ import { LanguageSwitcher } from "@/components/language-switcher"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { UserPlus, Mail, Lock, User, Github, Chrome } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
+import { supabaseBrowser } from "@/lib/supabase/supabase"
 
 export default function RegisterPage() {
   const router = useRouter()
@@ -250,11 +251,33 @@ export default function RegisterPage() {
 
           {/* Social Login */}
           <div className="grid grid-cols-2 gap-4">
-            <Button variant="outline" type="button">
+            <Button
+              variant="outline"
+              type="button"
+              onClick={async () => {
+                setIsLoading(true)
+                await supabaseBrowser.auth.signInWithOAuth({
+                  provider: "github",
+                  options: { redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/auth/callback` },
+                })
+                setIsLoading(false)
+              }}
+            >
               <Github className="w-4 h-4 mr-2" />
               Github
             </Button>
-            <Button variant="outline" type="button">
+            <Button
+              variant="outline"
+              type="button"
+              onClick={async () => {
+                setIsLoading(true)
+                await supabaseBrowser.auth.signInWithOAuth({
+                  provider: "google",
+                  options: { redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/auth/callback` },
+                })
+                setIsLoading(false)
+              }}
+            >
               <Chrome className="w-4 h-4 mr-2" />
               Google
             </Button>
