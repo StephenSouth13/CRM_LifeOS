@@ -192,26 +192,37 @@ export const useAppStore = create<AppState>()(
             body: JSON.stringify({ email, password }),
           })
 
-          // Read body once to avoid 'body stream already read' errors
-          const responseText = await response.text()
+          // Use clone() to inspect body safely, then parse original as JSON
+          let bodyText = null
+          try {
+            bodyText = await response.clone().text()
+          } catch (e) {
+            console.warn("Failed to clone response body:", e)
+          }
 
           if (!response.ok) {
             try {
-              const err = responseText ? JSON.parse(responseText) : null
-              console.error("Login failed:", err?.error || err || responseText)
+              const err = bodyText ? JSON.parse(bodyText) : null
+              console.error("Login failed:", err?.error || err || bodyText)
             } catch (e) {
-              console.error("Login failed:", responseText)
+              console.error("Login failed:", bodyText)
             }
             return false
           }
 
           let data: any = {}
           try {
-            data = responseText ? JSON.parse(responseText) : {}
+            data = await response.json()
           } catch (e) {
-            console.warn("Couldn't parse login response JSON, falling back to empty object", e)
-            data = {}
+            // Fallback to parsed text if response.json() fails
+            try {
+              data = bodyText ? JSON.parse(bodyText) : {}
+            } catch (err) {
+              console.warn("Couldn't parse login response JSON, falling back to empty object", err)
+              data = {}
+            }
           }
+
           const { user } = data || {}
           if (!user) {
             console.error("No user in response")
