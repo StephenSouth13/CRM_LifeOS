@@ -27,6 +27,7 @@ import {
 } from "lucide-react"
 import { usePermission } from "@/hooks/use-permissions"
 import type { Permission } from "@/lib/types"
+import { PermissionGuard } from "@/components/permission-guard"
 
 interface NavItem {
   href: string
