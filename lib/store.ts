@@ -201,11 +201,19 @@ export const useAppStore = create<AppState>()(
           }
 
           if (!response.ok) {
-            try {
-              const err = bodyText ? JSON.parse(bodyText) : null
-              console.error("Login failed:", err?.error || err || bodyText)
-            } catch (e) {
-              console.error("Login failed:", bodyText)
+            // Provide richer debug info: status and body text
+            console.error(
+              `Login failed: status=${response.status} ${response.statusText}`,
+            )
+            if (bodyText) {
+              try {
+                const parsed = JSON.parse(bodyText)
+                console.error("Login response body:", parsed)
+              } catch (e) {
+                console.error("Login response body (text):", bodyText)
+              }
+            } else {
+              console.error("Login response body: <empty>")
             }
             return false
           }
@@ -224,6 +232,10 @@ export const useAppStore = create<AppState>()(
           }
 
           const { user } = data || {}
+          if (!user) {
+            console.error("No user in response, full response:", data)
+            return false
+          }
           if (!user) {
             console.error("No user in response")
             return false
