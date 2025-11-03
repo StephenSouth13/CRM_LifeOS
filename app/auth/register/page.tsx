@@ -28,6 +28,7 @@ export default function RegisterPage() {
     email: "",
     password: "",
     confirmPassword: "",
+    orgId: "",
   })
   const [agreeToTerms, setAgreeToTerms] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
@@ -53,19 +54,22 @@ export default function RegisterPage() {
       return
     }
 
+    if (!formData.orgId) {
+      toast({ title: "Error", description: "Organization ID is required", variant: "destructive" })
+      return
+    }
+
     setIsLoading(true)
 
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 1000))
+    const success = await register(formData.email, formData.password, formData.name, formData.orgId)
 
-    register(formData.email, formData.password, formData.name)
+    if (success) {
+      toast({ title: t("registerSuccess"), description: t("welcomeBack") })
+      router.push("/dashboard")
+    } else {
+      toast({ title: "Error", description: "Registration failed. Check console for details.", variant: "destructive" })
+    }
 
-    toast({
-      title: t("registerSuccess"),
-      description: t("welcomeBack"),
-    })
-
-    router.push("/dashboard")
     setIsLoading(false)
   }
 
