@@ -1,3 +1,4 @@
+// File: app/auth/forgot-password/page.tsx
 "use client"
 
 import type React from "react"
