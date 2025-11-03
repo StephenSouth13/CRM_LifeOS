@@ -16,7 +16,8 @@ export const supabaseAdmin = (typeof window === 'undefined')
   ? (() => {
       const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY
       if (!supabaseKey) {
-        throw new Error('SUPABASE_SERVICE_ROLE_KEY is required on the server')
+        console.warn('SUPABASE_SERVICE_ROLE_KEY not set - supabaseAdmin will be null')
+        return null as any
       }
       return createClient(supabaseUrl, supabaseKey, {
         auth: { autoRefreshToken: false, persistSession: false },
