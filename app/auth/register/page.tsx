@@ -180,6 +180,21 @@ export default function RegisterPage() {
               </div>
 
               <div className="space-y-2">
+                <Label htmlFor="orgId">Organization ID</Label>
+                <div className="relative">
+                  <Input
+                    id="orgId"
+                    type="text"
+                    placeholder="Your organization ID"
+                    value={formData.orgId}
+                    onChange={(e) => setFormData({ ...formData, orgId: e.target.value })}
+                    className="pl-3"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
                 <Label htmlFor="password">{t("password")}</Label>
                 <div className="relative">
                   <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
