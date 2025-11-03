@@ -192,11 +192,19 @@ export const useAppStore = create<AppState>()(
             body: JSON.stringify({ email, password }),
           })
 
+          const data = await response.json()
+
           if (!response.ok) {
-            throw new Error("Login failed")
+            console.error("Login failed:", data.error)
+            return false
           }
 
-          const { user } = await response.json()
+          const { user } = data
+          if (!user) {
+            console.error("No user in response")
+            return false
+          }
+
           set({ user, isAuthenticated: true })
           return true
         } catch (error) {
