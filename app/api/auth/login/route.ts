@@ -14,6 +14,11 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    if (!supabaseAdmin) {
+      console.error('supabaseAdmin not configured on server')
+      return NextResponse.json({ error: 'Server configuration error' }, { status: 500 })
+    }
+
     // Authenticate user with Supabase
     const { data: authData, error: authError } =
       await supabaseAdmin.auth.signInWithPassword({
