@@ -253,7 +253,7 @@ export const useAppStore = create<AppState>()(
         }
       },
 
-      setUser: (user) => set({ user }),
+      setUser: (user) => set({ user, isAuthenticated: !!user }),
 
       setIsLoading: (loading) => set({ isLoading: loading }),
 
