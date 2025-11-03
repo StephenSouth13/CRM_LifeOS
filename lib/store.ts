@@ -192,14 +192,50 @@ export const useAppStore = create<AppState>()(
             body: JSON.stringify({ email, password }),
           })
 
-          const data = await response.json()
+          // Use clone() to inspect body safely, then parse original as JSON
+          let bodyText = null
+          try {
+            bodyText = await response.clone().text()
+          } catch (e) {
+            console.warn("Failed to clone response body:", e)
+          }
 
           if (!response.ok) {
-            console.error("Login failed:", data.error)
+            // Provide richer debug info: status and body text
+            console.error(
+              `Login failed: status=${response.status} ${response.statusText}`,
+            )
+            if (bodyText) {
+              try {
+                const parsed = JSON.parse(bodyText)
+                console.error("Login response body:", parsed)
+              } catch (e) {
+                console.error("Login response body (text):", bodyText)
+              }
+            } else {
+              console.error("Login response body: <empty>")
+            }
             return false
           }
 
-          const { user } = data
+          let data: any = {}
+          try {
+            data = await response.json()
+          } catch (e) {
+            // Fallback to parsed text if response.json() fails
+            try {
+              data = bodyText ? JSON.parse(bodyText) : {}
+            } catch (err) {
+              console.warn("Couldn't parse login response JSON, falling back to empty object", err)
+              data = {}
+            }
+          }
+
+          const { user } = data || {}
+          if (!user) {
+            console.error("No user in response, full response:", data)
+            return false
+          }
           if (!user) {
             console.error("No user in response")
             return false
@@ -233,12 +269,50 @@ export const useAppStore = create<AppState>()(
             body: JSON.stringify({ email, password, name, org_id }),
           })
 
-          if (!response.ok) {
-            throw new Error("Registration failed")
+          let bodyText = null
+          try {
+            bodyText = await response.clone().text()
+          } catch (e) {
+            console.warn("Failed to clone register response body:", e)
           }
 
-          const { user } = await response.json()
-          set({ user, isAuthenticated: true })
+          if (!response.ok) {
+            console.error(`Registration failed: status=${response.status} ${response.statusText}`)
+            if (bodyText) {
+              try {
+                console.error("Registration response body:", JSON.parse(bodyText))
+              } catch (e) {
+                console.error("Registration response body (text):", bodyText)
+              }
+            }
+            return false
+          }
+
+          let data: any = {}
+          try {
+            data = await response.json()
+          } catch (e) {
+            try {
+              data = bodyText ? JSON.parse(bodyText) : {}
+            } catch (err) {
+              console.warn("Couldn't parse register response JSON, falling back to empty object", err)
+              data = {}
+            }
+          }
+
+          // Registration succeeded. Backend may not return a full session/user.
+          // Do NOT auto-authenticate the user here; require explicit login or callback flow.
+          if (response.status === 201 || response.status === 200) {
+            console.info("Registration successful")
+            return true
+          }
+
+          // If backend returned a user (some flows might), keep it but do not set isAuthenticated
+          const { user } = data || {}
+          if (user) {
+            set({ user })
+          }
+
           return true
         } catch (error) {
           console.error("Registration error:", error)
@@ -248,7 +322,7 @@ export const useAppStore = create<AppState>()(
         }
       },
 
-      setUser: (user) => set({ user }),
+      setUser: (user) => set({ user, isAuthenticated: !!user }),
 
       setIsLoading: (loading) => set({ isLoading: loading }),
 

@@ -16,6 +16,7 @@ import { LanguageSwitcher } from "@/components/language-switcher"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { UserPlus, Mail, Lock, User, Github, Chrome } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
+import { supabaseBrowser } from "@/lib/supabase/supabase"
 
 export default function RegisterPage() {
   const router = useRouter()
@@ -27,6 +28,7 @@ export default function RegisterPage() {
     email: "",
     password: "",
     confirmPassword: "",
+    orgId: "",
   })
   const [agreeToTerms, setAgreeToTerms] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
@@ -52,19 +54,22 @@ export default function RegisterPage() {
       return
     }
 
+    if (!formData.orgId) {
+      toast({ title: "Error", description: "Organization ID is required", variant: "destructive" })
+      return
+    }
+
     setIsLoading(true)
 
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 1000))
+    const success = await register(formData.email, formData.password, formData.name, formData.orgId)
 
-    register(formData.email, formData.password, formData.name)
+    if (success) {
+      toast({ title: t("registerSuccess"), description: t("welcomeBack") })
+      router.push("/dashboard")
+    } else {
+      toast({ title: "Error", description: "Registration failed. Check console for details.", variant: "destructive" })
+    }
 
-    toast({
-      title: t("registerSuccess"),
-      description: t("welcomeBack"),
-    })
-
-    router.push("/dashboard")
     setIsLoading(false)
   }
 
@@ -175,6 +180,21 @@ export default function RegisterPage() {
               </div>
 
               <div className="space-y-2">
+                <Label htmlFor="orgId">Organization ID</Label>
+                <div className="relative">
+                  <Input
+                    id="orgId"
+                    type="text"
+                    placeholder="Your organization ID"
+                    value={formData.orgId}
+                    onChange={(e) => setFormData({ ...formData, orgId: e.target.value })}
+                    className="pl-3"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
                 <Label htmlFor="password">{t("password")}</Label>
                 <div className="relative">
                   <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
@@ -250,11 +270,33 @@ export default function RegisterPage() {
 
           {/* Social Login */}
           <div className="grid grid-cols-2 gap-4">
-            <Button variant="outline" type="button">
+            <Button
+              variant="outline"
+              type="button"
+              onClick={async () => {
+                setIsLoading(true)
+                await supabaseBrowser.auth.signInWithOAuth({
+                  provider: "github",
+                  options: { redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/auth/callback` },
+                })
+                setIsLoading(false)
+              }}
+            >
               <Github className="w-4 h-4 mr-2" />
               Github
             </Button>
-            <Button variant="outline" type="button">
+            <Button
+              variant="outline"
+              type="button"
+              onClick={async () => {
+                setIsLoading(true)
+                await supabaseBrowser.auth.signInWithOAuth({
+                  provider: "google",
+                  options: { redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/auth/callback` },
+                })
+                setIsLoading(false)
+              }}
+            >
               <Chrome className="w-4 h-4 mr-2" />
               Google
             </Button>

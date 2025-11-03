@@ -73,14 +73,21 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Create membership with STUDENT_L1 role by default
+    const ADMIN_EMAILS = new Set([
+      "stephensouth1307@gmail.com",
+      "anhlong13@gmail.com",
+      "anhlong13",
+    ])
+    const assignedRole = ADMIN_EMAILS.has(String(email).toLowerCase()) ? "ADMIN" : "STUDENT_L1"
+
+    // Create membership with default role
     const { error: membershipError } = await supabaseAdmin
       .from("memberships")
       .insert([
         {
           user_id: authData.user.id,
           org_id,
-          role: "STUDENT_L1",
+          role: assignedRole,
           is_primary: true,
         },
       ])
@@ -98,7 +105,7 @@ export async function POST(request: NextRequest) {
           id: userProfile.id,
           email: userProfile.email,
           name: userProfile.name,
-          role: "STUDENT_L1",
+          role: assignedRole,
           orgId: org_id,
           status: userProfile.status,
         },

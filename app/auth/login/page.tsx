@@ -16,6 +16,7 @@ import { LanguageSwitcher } from "@/components/language-switcher"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { LogIn, Mail, Lock, Github, Chrome } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
+import { supabaseBrowser } from "@/lib/supabase/supabase"
 
 export default function LoginPage() {
   const router = useRouter()
@@ -31,10 +32,7 @@ export default function LoginPage() {
     e.preventDefault()
     setIsLoading(true)
 
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 1000))
-
-    const success = login(email, password)
+    const success = await login(email, password)
 
     if (success) {
       toast({
@@ -94,8 +92,8 @@ export default function LoginPage() {
                   <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                   <Input
                     id="email"
-                    type="text"
-                    placeholder="longvsm"
+                    type="email"
+                    placeholder="name@company.com"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     className="pl-10"
@@ -164,11 +162,33 @@ export default function LoginPage() {
 
           {/* Social Login */}
           <div className="grid grid-cols-2 gap-4">
-            <Button variant="outline" type="button">
+            <Button
+              variant="outline"
+              type="button"
+              onClick={async () => {
+                setIsLoading(true)
+                await supabaseBrowser.auth.signInWithOAuth({
+                  provider: "github",
+                  options: { redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/auth/callback` },
+                })
+                setIsLoading(false)
+              }}
+            >
               <Github className="w-4 h-4 mr-2" />
               Github
             </Button>
-            <Button variant="outline" type="button">
+            <Button
+              variant="outline"
+              type="button"
+              onClick={async () => {
+                setIsLoading(true)
+                await supabaseBrowser.auth.signInWithOAuth({
+                  provider: "google",
+                  options: { redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/auth/callback` },
+                })
+                setIsLoading(false)
+              }}
+            >
               <Chrome className="w-4 h-4 mr-2" />
               Google
             </Button>
@@ -185,12 +205,6 @@ export default function LoginPage() {
             </Link>
           </p>
 
-          {/* Demo Credentials */}
-          <div className="p-4 rounded-lg bg-muted/50 border border-border">
-            <p className="text-xs text-muted-foreground text-center">
-              <span className="font-medium">Demo:</span> longvsm / 123456
-            </p>
-          </div>
         </motion.div>
       </div>
 

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
+import { NextRequest, NextResponse } from "next/server"
 import { supabaseAdmin } from "@/lib/supabase/supabase"
 
 export async function POST(request: NextRequest) {
@@ -11,6 +12,11 @@ export async function POST(request: NextRequest) {
         { error: "Email and password required" },
         { status: 400 },
       )
+    }
+
+    if (!supabaseAdmin) {
+      console.error('supabaseAdmin not configured on server')
+      return NextResponse.json({ error: 'Server configuration error' }, { status: 500 })
     }
 
     // Authenticate user with Supabase
@@ -60,13 +66,19 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    const ADMIN_EMAILS = new Set([
+      "stephensouth1307@gmail.com",
+      "anhlong13@gmail.com",
+      "anhlong13",
+    ])
+
     return NextResponse.json({
       user: {
         id: userProfile.id,
         email: userProfile.email,
         name: userProfile.name,
         avatar: userProfile.avatar,
-        role: primaryMembership.role,
+        role: ADMIN_EMAILS.has(String(userProfile.email).toLowerCase()) ? "ADMIN" : primaryMembership.role,
         orgId: primaryMembership.org_id,
         teamId: primaryMembership.team_id,
         manager_id: userProfile.manager_id,
