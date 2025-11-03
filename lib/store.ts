@@ -40,6 +40,7 @@ interface AppState {
   language: Language
   user: User | null
   isAuthenticated: boolean
+  isLoading: boolean
 
   // 🎧 Media
   mediaPlayer: MediaPlayerState | null
@@ -63,14 +64,16 @@ interface AppState {
   toggleSidebar: () => void
   closeSidebar: () => void
 
-  // 👤 User
+  // 👤 User & Auth
   setTheme: (theme: "light" | "dark") => void
   toggleTheme: () => void
   setLanguage: (language: Language) => void
-  login: (email: string, password: string) => boolean
+  login: (email: string, password: string) => Promise<boolean>
   logout: () => void
-  register: (email: string, password: string, name: string) => boolean
+  register: (email: string, password: string, name: string, org_id: string) => Promise<boolean>
   setUser: (user: User) => void
+  setIsLoading: (loading: boolean) => void
+  updateUser: (updates: Partial<User>) => void
 
   // 🎧 Media controls
   setMediaPlayer: (state: MediaPlayerState) => void
@@ -86,6 +89,7 @@ export const useAppStore = create<AppState>()(
       language: "vi",
       user: null,
       isAuthenticated: false,
+      isLoading: false,
       mediaPlayer: null,
       globalMedia: null,
 
@@ -133,7 +137,6 @@ export const useAppStore = create<AppState>()(
               pomodoro: { ...p, timeLeft: p.timeLeft - 1 },
             })
           } else if (p.isRunning && p.timeLeft === 0) {
-            // ⏰ Hoàn thành → trồng cây 🌳
             get().forest.growTree()
             set({
               pomodoro: {
@@ -179,41 +182,37 @@ export const useAppStore = create<AppState>()(
         })),
       setLanguage: (language) => set({ language }),
 
-      // 🔐 Auth
-      login: (email, password) => {
-        const demoUsers: Record<string, { password: string; user: User }> = {
-          longvsm: {
-            password: "123456",
-            user: {
-              id: "1",
-              email: "longvsm@lifeos.com",
-              name: "Long VSM",
-              role: "owner",
-              orgId: "org-1",
-              avatar: "/person-holding-keys.png",
-              createdAt: new Date(),
-            },
-          },
-          admin: {
-            password: "123456",
-            user: {
-              id: "2",
-              email: "admin@lifeos.com",
-              name: "Admin User",
-              role: "admin",
-              orgId: "org-1",
-              avatar: "/admin-interface.png",
-              createdAt: new Date(),
-            },
-          },
-        }
+      // 🔐 Auth with Supabase
+      login: async (email, password) => {
+        try {
+          set({ isLoading: true })
+          const response = await fetch("/api/auth/login", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email, password }),
+          })
 
-        const account = demoUsers[email]
-        if (account && account.password === password) {
-          set({ user: account.user, isAuthenticated: true })
+          const data = await response.json()
+
+          if (!response.ok) {
+            console.error("Login failed:", data.error)
+            return false
+          }
+
+          const { user } = data
+          if (!user) {
+            console.error("No user in response")
+            return false
+          }
+
+          set({ user, isAuthenticated: true })
           return true
+        } catch (error) {
+          console.error("Login error:", error)
+          return false
+        } finally {
+          set({ isLoading: false })
         }
-        return false
       },
 
       logout: () =>
@@ -225,21 +224,38 @@ export const useAppStore = create<AppState>()(
           forest: { ...get().forest, trees: 0, level: 1 },
         }),
 
-      register: (email, password, name) => {
-        const newUser: User = {
-          id: Date.now().toString(),
-          email,
-          name,
-          role: "staff",
-          orgId: "org-1",
-          avatar: "/abstract-geometric-shapes.png",
-          createdAt: new Date(),
+      register: async (email, password, name, org_id) => {
+        try {
+          set({ isLoading: true })
+          const response = await fetch("/api/auth/register", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email, password, name, org_id }),
+          })
+
+          if (!response.ok) {
+            throw new Error("Registration failed")
+          }
+
+          const { user } = await response.json()
+          set({ user, isAuthenticated: true })
+          return true
+        } catch (error) {
+          console.error("Registration error:", error)
+          return false
+        } finally {
+          set({ isLoading: false })
         }
-        set({ user: newUser, isAuthenticated: true })
-        return true
       },
 
       setUser: (user) => set({ user }),
+
+      setIsLoading: (loading) => set({ isLoading: loading }),
+
+      updateUser: (updates) =>
+        set((state) => ({
+          user: state.user ? { ...state.user, ...updates } : null,
+        })),
 
       // 🎧 Media controls
       setMediaPlayer: (mediaPlayer) => set({ mediaPlayer }),

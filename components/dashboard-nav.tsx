@@ -23,99 +23,155 @@ import {
   GitBranch,
   Brain,
   User,
+  Zap,
 } from "lucide-react"
+import { usePermission } from "@/hooks/use-permissions"
+import type { Permission } from "@/lib/types"
+import { PermissionGuard } from "@/components/permission-guard"
+
+interface NavItem {
+  href: string
+  icon: any
+  key: string
+  permission: Permission
+}
 
 export function DashboardNav() {
   const pathname = usePathname()
   const { t } = useTranslation()
   const { user } = useAppStore()
 
-  const getNavItems = () => {
-    const baseItems = [
+  const getNavItems = (): NavItem[] => {
+    const items: NavItem[] = [
       {
         href: "/dashboard",
         icon: LayoutDashboard,
-        key: "dashboard" as const,
-        roles: ["owner", "admin", "leader", "staff"],
+        key: "dashboard",
+        permission: "dashboard.view",
       },
       {
         href: "/dashboard/attendance",
         icon: Clock,
-        key: "attendance" as const,
-        roles: ["owner", "admin", "leader", "staff"],
+        key: "attendance",
+        permission: "attendance.view_self",
       },
       {
         href: "/dashboard/tasks",
         icon: CheckSquare,
-        key: "tasks" as const,
-        roles: ["owner", "admin", "leader", "staff"],
+        key: "tasks",
+        permission: "task.view_self",
       },
       {
         href: "/dashboard/calendar",
         icon: Calendar,
-        key: "calendar" as const,
-        roles: ["owner", "admin", "leader", "staff"],
+        key: "calendar",
+        permission: "calendar.view",
       },
-      { href: "/dashboard/notes", icon: FileText, key: "notes" as const, roles: ["owner", "admin", "leader", "staff"] },
-      { href: "/dashboard/rooms", icon: DoorOpen, key: "rooms" as const, roles: ["owner", "admin", "leader", "staff"] },
+      {
+        href: "/dashboard/notes",
+        icon: FileText,
+        key: "notes",
+        permission: "dashboard.view",
+      },
+      {
+        href: "/dashboard/rooms",
+        icon: DoorOpen,
+        key: "rooms",
+        permission: "room.view",
+      },
+      {
+        href: "/dashboard/ai-tools",
+        icon: Brain,
+        key: "aiTools",
+        permission: "ai.view",
+      },
+      {
+        href: "/dashboard/personal",
+        icon: User,
+        key: "personalHub",
+        permission: "dashboard.view",
+      },
     ]
 
-    // Module Framework Items
-    baseItems.push({
-      href: "/dashboard/workflows",
-      icon: GitBranch,
-      key: "workflows" as const,
-      roles: ["owner", "admin", "leader"],
-    })
-
-    baseItems.push({
-      href: "/dashboard/ai-tools",
-      icon: Brain,
-      key: "aiTools" as const,
-      roles: ["owner", "admin", "leader", "staff"],
-    })
-
-    baseItems.push({
-      href: "/dashboard/personal",
-      icon: User,
-      key: "personalHub" as const,
-      roles: ["owner", "admin", "leader", "staff"],
-    })
-
-    // Role-specific items
-    if (user?.role === "owner") {
-      baseItems.push(
-        { href: "/dashboard/organizations", icon: Briefcase, key: "organizations" as const, roles: ["owner"] },
-        { href: "/dashboard/billing", icon: FileCheck, key: "billing" as const, roles: ["owner"] },
+    // Admin-only items
+    if (user?.role === "ADMIN" || user?.role === "BOD") {
+      items.push(
+        {
+          href: "/dashboard/users",
+          icon: Users,
+          key: "users",
+          permission: "user.view_all",
+        },
+        {
+          href: "/dashboard/organizations",
+          icon: Briefcase,
+          key: "organizations",
+          permission: "org.manage",
+        },
+        {
+          href: "/dashboard/billing",
+          icon: FileCheck,
+          key: "billing",
+          permission: "billing.manage",
+        },
+        {
+          href: "/dashboard/reports",
+          icon: BarChart3,
+          key: "reports",
+          permission: "report.view_all",
+        },
       )
     }
 
-    if (user?.role === "owner" || user?.role === "admin") {
-      baseItems.push(
-        { href: "/dashboard/users", icon: Users, key: "users" as const, roles: ["owner", "admin"] },
-        { href: "/dashboard/reports", icon: BarChart3, key: "reports" as const, roles: ["owner", "admin"] },
-      )
+    // Leader-specific items
+    if (
+      user?.role === "LEADER" ||
+      user?.role === "ADMIN" ||
+      user?.role === "BOD"
+    ) {
+      items.push({
+        href: "/dashboard/evaluations",
+        icon: Zap,
+        key: "evaluations",
+        permission: "evaluation.view_team",
+      })
     }
 
-    if (user?.role === "leader") {
-      baseItems.push(
-        { href: "/dashboard/team", icon: Users, key: "team" as const, roles: ["leader"] },
-        { href: "/dashboard/approvals", icon: FileCheck, key: "approvals" as const, roles: ["leader"] },
-      )
-    }
-
-    baseItems.push(
-      { href: "/dashboard/media", icon: Music, key: "Media" as const, roles: ["owner", "admin", "leader", "staff"] },
-      { href: "/dashboard/admin", icon: Shield, key: "admin" as const, roles: ["owner", "admin"] },
+    // Workflow and Media items
+    items.push(
       {
-        href: "/dashboard/settings",
-        icon: Settings,
-        key: "settings" as const,
-        roles: ["owner", "admin", "leader", "staff"],
+        href: "/dashboard/workflows",
+        icon: GitBranch,
+        key: "workflows",
+        permission: "dashboard.view",
+      },
+      {
+        href: "/dashboard/media",
+        icon: Music,
+        key: "media",
+        permission: "dashboard.view",
       },
     )
 
-    return baseItems.filter((item) => item.roles.includes(user?.role || "staff"))
+    // Admin panel
+    if (user?.role === "ADMIN" || user?.role === "BOD") {
+      items.push({
+        href: "/dashboard/admin",
+        icon: Shield,
+        key: "admin",
+        permission: "admin.manage",
+      })
+    }
+
+    // Settings (available to all)
+    items.push({
+      href: "/dashboard/settings",
+      icon: Settings,
+      key: "settings",
+      permission: "dashboard.view",
+    })
+
+    return items
   }
 
   const navItems = getNavItems()
@@ -127,26 +183,55 @@ export function DashboardNav() {
         const isActive = pathname === item.href || pathname.startsWith(item.href + "/")
 
         return (
-          <Link
+          <PermissionGuardNavItem
             key={item.href}
-            href={item.href}
-            className={cn(
-              "group flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all touch-target",
-              isActive
-                ? "bg-gradient-to-r from-primary/10 to-secondary/10 text-primary shadow-sm"
-                : "text-muted-foreground hover:bg-accent/50 hover:text-foreground",
-            )}
-          >
-            <Icon className={cn("h-4 w-4 flex-shrink-0 transition-transform", isActive && "scale-110")} />
-            <span className="truncate">{item.key === "Media" ? item.key : t(item.key)}</span>
-            {isActive && <div className="ml-auto h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />}
-          </Link>
+            item={item}
+            isActive={isActive}
+            t={t}
+            Icon={Icon}
+          />
         )
       })}
 
       <div className="mt-4 pt-4 border-t border-border">
-        <RoleBadge role={user?.role || "staff"} />
+        <RoleBadge role={user?.role || "CUSTOMER"} />
       </div>
     </nav>
+  )
+}
+
+interface PermissionGuardNavItemProps {
+  item: NavItem
+  isActive: boolean
+  t: (key: string) => string
+  Icon: any
+}
+
+function PermissionGuardNavItem({
+  item,
+  isActive,
+  t,
+  Icon,
+}: PermissionGuardNavItemProps) {
+  const hasPermission = usePermission(item.permission)
+
+  if (!hasPermission) {
+    return null
+  }
+
+  return (
+    <Link
+      href={item.href}
+      className={cn(
+        "group flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all",
+        isActive
+          ? "bg-gradient-to-r from-primary/10 to-secondary/10 text-primary shadow-sm"
+          : "text-muted-foreground hover:bg-accent/50 hover:text-foreground",
+      )}
+    >
+      <Icon className={cn("h-4 w-4 flex-shrink-0 transition-transform", isActive && "scale-110")} />
+      <span className="truncate">{t(item.key)}</span>
+      {isActive && <div className="ml-auto h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />}
+    </Link>
   )
 }
