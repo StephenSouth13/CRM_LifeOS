@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { useTranslation } from "@/hooks/use-translation"
 import { useAppStore } from "@/lib/store"
 import { hasPermission } from "@/lib/permissions"
@@ -19,360 +19,235 @@ import { Calendar, Clock, Check, X, Plus, AlertCircle } from "lucide-react"
 import { motion } from "framer-motion"
 import type { LeaveRequest } from "@/lib/types"
 
-const mockLeaveRequests: LeaveRequest[] = [
-  {
-    id: "1",
-    userId: "4",
-    orgId: "org-1",
-    type: "vacation",
-    startDate: new Date(2025, 0, 20),
-    endDate: new Date(2025, 0, 22),
-    reason: "Family vacation",
-    status: "pending",
-    createdAt: new Date(2025, 0, 10),
-  },
-  {
-    id: "2",
-    userId: "3",
-    orgId: "org-1",
-    type: "sick",
-    startDate: new Date(2025, 0, 15),
-    endDate: new Date(2025, 0, 15),
-    reason: "Medical appointment",
-    status: "approved",
-    reviewerId: "2",
-    reviewedAt: new Date(2025, 0, 14),
-    createdAt: new Date(2025, 0, 13),
-  },
-  {
-    id: "3",
-    userId: "1",
-    orgId: "org-1",
-    type: "personal",
-    startDate: new Date(2025, 0, 25),
-    endDate: new Date(2025, 0, 26),
-    reason: "Personal matters",
-    status: "approved",
-    reviewerId: "2",
-    reviewedAt: new Date(2025, 0, 12),
-    createdAt: new Date(2025, 0, 11),
-  },
-]
-
 export function LeaveRequests() {
   const { t } = useTranslation()
   const { user } = useAppStore()
-  const [requests, setRequests] = useState<LeaveRequest[]>(mockLeaveRequests)
+  const [requests, setRequests] = useState<LeaveRequest[]>([])
+  const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState("my-requests")
+  const [isDialogOpen, setIsDialogOpen] = useState(false)
 
-  const canApprove = user && hasPermission(user.role, "leave.approve")
+  const [formData, setFormData] = useState({
+    type: "vacation",
+    startDate: "",
+    endDate: "",
+    reason: "",
+  })
 
-  const myRequests = requests.filter((req) => req.userId === user?.id)
-  const pendingApprovals = requests.filter((req) => req.status === "pending" && req.userId !== user?.id)
-  const allRequests = requests.filter((req) => req.userId !== user?.id)
+  useEffect(() => {
+    if (user?.id && user?.orgId) {
+      fetchLeaveRequests()
+    }
+  }, [user?.id, user?.orgId])
 
-  const handleApprove = (requestId: string) => {
-    setRequests(
-      requests.map((req) =>
-        req.id === requestId
-          ? {
-              ...req,
-              status: "approved",
-              reviewerId: user?.id,
-              reviewedAt: new Date(),
-            }
-          : req,
-      ),
-    )
-  }
-
-  const handleDeny = (requestId: string) => {
-    setRequests(
-      requests.map((req) =>
-        req.id === requestId
-          ? {
-              ...req,
-              status: "denied",
-              reviewerId: user?.id,
-              reviewedAt: new Date(),
-            }
-          : req,
-      ),
-    )
-  }
-
-  const formatDate = (date: Date) => {
-    return date.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
-  }
-
-  const getDaysDifference = (start: Date, end: Date) => {
-    const diff = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1
-    return diff
-  }
-
-  const getStatusColor = (status: LeaveRequest["status"]) => {
-    switch (status) {
-      case "pending":
-        return "bg-yellow-500/10 text-yellow-500 border-yellow-500/20"
-      case "approved":
-        return "bg-emerald-500/10 text-emerald-500 border-emerald-500/20"
-      case "denied":
-        return "bg-red-500/10 text-red-500 border-red-500/20"
+  const fetchLeaveRequests = async () => {
+    try {
+      const response = await fetch(
+        `/api/leave-requests?user_id=${user?.id}&org_id=${user?.orgId}`,
+      )
+      if (response.ok) {
+        const data = await response.json()
+        setRequests(data.requests || [])
+      }
+    } catch (error) {
+      console.error("Failed to fetch leave requests:", error)
+    } finally {
+      setLoading(false)
     }
   }
 
-  const getTypeColor = (type: LeaveRequest["type"]) => {
-    switch (type) {
-      case "sick":
-        return "bg-red-500/10 text-red-500"
-      case "vacation":
-        return "bg-blue-500/10 text-blue-500"
-      case "personal":
-        return "bg-purple-500/10 text-purple-500"
-      case "other":
-        return "bg-gray-500/10 text-gray-500"
+  const handleCreateRequest = async (e: React.FormEvent) => {
+    e.preventDefault()
+    try {
+      const response = await fetch("/api/leave-requests", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          user_id: user?.id,
+          org_id: user?.orgId,
+          type: formData.type,
+          start_date: formData.startDate,
+          end_date: formData.endDate,
+          reason: formData.reason,
+        }),
+      })
+
+      if (response.ok) {
+        setIsDialogOpen(false)
+        setFormData({ type: "vacation", startDate: "", endDate: "", reason: "" })
+        fetchLeaveRequests()
+      }
+    } catch (error) {
+      console.error("Failed to create leave request:", error)
     }
   }
 
-  return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold">{t("leave")}</h2>
-          <p className="text-muted-foreground">Manage leave requests and approvals</p>
-        </div>
-        <Dialog>
-          <DialogTrigger asChild>
-            <Button>
-              <Plus className="h-4 w-4 mr-2" />
-              {t("requestLeave")}
-            </Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>{t("requestLeave")}</DialogTitle>
-            </DialogHeader>
-            <LeaveRequestForm />
-          </DialogContent>
-        </Dialog>
-      </div>
+  const getStatusColor = (status: string) => {
+    const colors: Record<string, { bg: string; text: string; icon: React.ReactNode }> = {
+      pending: { bg: "bg-yellow-100", text: "text-yellow-700", icon: <Clock className="h-4 w-4" /> },
+      approved: { bg: "bg-green-100", text: "text-green-700", icon: <Check className="h-4 w-4" /> },
+      denied: { bg: "bg-red-100", text: "text-red-700", icon: <X className="h-4 w-4" /> },
+      cancelled: { bg: "bg-gray-100", text: "text-gray-700", icon: <X className="h-4 w-4" /> },
+    }
+    const config = colors[status] || colors.pending
+    return (
+      <Badge className={`${config.bg} ${config.text} gap-1`}>
+        {config.icon}
+        {status}
+      </Badge>
+    )
+  }
 
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList>
-          <TabsTrigger value="my-requests">My Requests</TabsTrigger>
-          {canApprove && (
-            <>
-              <TabsTrigger value="pending">
-                Pending Approvals
-                {pendingApprovals.length > 0 && (
-                  <Badge variant="destructive" className="ml-2">
-                    {pendingApprovals.length}
-                  </Badge>
-                )}
-              </TabsTrigger>
-              <TabsTrigger value="all">All Requests</TabsTrigger>
-            </>
-          )}
-        </TabsList>
-
-        <TabsContent value="my-requests" className="space-y-4">
-          {myRequests.length > 0 ? (
-            myRequests.map((request) => (
-              <LeaveRequestCard
-                key={request.id}
-                request={request}
-                formatDate={formatDate}
-                getDaysDifference={getDaysDifference}
-                getStatusColor={getStatusColor}
-                getTypeColor={getTypeColor}
-                showActions={false}
-              />
-            ))
-          ) : (
-            <Card>
-              <CardContent className="py-12 text-center text-muted-foreground">
-                <AlertCircle className="h-12 w-12 mx-auto mb-2 opacity-50" />
-                <p>No leave requests</p>
-              </CardContent>
-            </Card>
-          )}
-        </TabsContent>
-
-        {canApprove && (
-          <>
-            <TabsContent value="pending" className="space-y-4">
-              {pendingApprovals.length > 0 ? (
-                pendingApprovals.map((request) => (
-                  <LeaveRequestCard
-                    key={request.id}
-                    request={request}
-                    formatDate={formatDate}
-                    getDaysDifference={getDaysDifference}
-                    getStatusColor={getStatusColor}
-                    getTypeColor={getTypeColor}
-                    showActions={true}
-                    onApprove={handleApprove}
-                    onDeny={handleDeny}
-                  />
-                ))
-              ) : (
-                <Card>
-                  <CardContent className="py-12 text-center text-muted-foreground">
-                    <Check className="h-12 w-12 mx-auto mb-2 opacity-50" />
-                    <p>No pending approvals</p>
-                  </CardContent>
-                </Card>
-              )}
-            </TabsContent>
-
-            <TabsContent value="all" className="space-y-4">
-              {allRequests.map((request) => (
-                <LeaveRequestCard
-                  key={request.id}
-                  request={request}
-                  formatDate={formatDate}
-                  getDaysDifference={getDaysDifference}
-                  getStatusColor={getStatusColor}
-                  getTypeColor={getTypeColor}
-                  showActions={request.status === "pending"}
-                  onApprove={handleApprove}
-                  onDeny={handleDeny}
-                />
-              ))}
-            </TabsContent>
-          </>
-        )}
-      </Tabs>
-    </div>
-  )
-}
-
-function LeaveRequestCard({
-  request,
-  formatDate,
-  getDaysDifference,
-  getStatusColor,
-  getTypeColor,
-  showActions,
-  onApprove,
-  onDeny,
-}: {
-  request: LeaveRequest
-  formatDate: (date: Date) => string
-  getDaysDifference: (start: Date, end: Date) => number
-  getStatusColor: (status: LeaveRequest["status"]) => string
-  getTypeColor: (type: LeaveRequest["type"]) => string
-  showActions: boolean
-  onApprove?: (id: string) => void
-  onDeny?: (id: string) => void
-}) {
-  const { t } = useTranslation()
-  const days = getDaysDifference(request.startDate, request.endDate)
+  const myRequests = requests.filter((r) => r.user_id === user?.id)
+  const teamRequests = requests.filter((r) => r.user_id !== user?.id)
 
   return (
-    <motion.div whileHover={{ x: 4 }}>
-      <Card>
-        <CardContent className="p-6">
-          <div className="flex items-start justify-between gap-4">
-            <div className="flex-1 space-y-3">
-              <div className="flex items-center gap-2 flex-wrap">
-                <Badge className={getTypeColor(request.type)}>{t(request.type)}</Badge>
-                <Badge className={getStatusColor(request.status)}>{t(request.status)}</Badge>
-                <span className="text-sm text-muted-foreground">
-                  {days} {days === 1 ? "day" : "days"}
-                </span>
-              </div>
-
-              <div className="space-y-2">
-                <div className="flex items-center gap-2 text-sm">
-                  <Calendar className="h-4 w-4 text-muted-foreground" />
-                  <span>
-                    {formatDate(request.startDate)} - {formatDate(request.endDate)}
-                  </span>
-                </div>
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <Clock className="h-4 w-4" />
-                  <span>Requested on {formatDate(request.createdAt)}</span>
-                </div>
-              </div>
-
-              <div>
-                <p className="text-sm font-medium mb-1">{t("reason")}:</p>
-                <p className="text-sm text-muted-foreground">{request.reason}</p>
-              </div>
-
-              {request.reviewedAt && (
-                <div className="text-xs text-muted-foreground">Reviewed on {formatDate(request.reviewedAt)}</div>
+    <Card>
+      <CardContent className="pt-6">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <div className="flex items-center justify-between mb-4">
+            <TabsList>
+              <TabsTrigger value="my-requests">My Requests</TabsTrigger>
+              {hasPermission(user?.role || "CUSTOMER", "leave.approve_team") && (
+                <TabsTrigger value="team-requests">Team Requests</TabsTrigger>
               )}
-            </div>
+            </TabsList>
 
-            {showActions && onApprove && onDeny && (
-              <div className="flex gap-2">
-                <Button size="sm" onClick={() => onApprove(request.id)}>
-                  <Check className="h-4 w-4 mr-1" />
-                  {t("approve")}
-                </Button>
-                <Button size="sm" variant="outline" onClick={() => onDeny(request.id)}>
-                  <X className="h-4 w-4 mr-1" />
-                  {t("deny")}
-                </Button>
-              </div>
+            {hasPermission(user?.role || "CUSTOMER", "leave.create") && (
+              <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button size="sm" className="gap-2">
+                    <Plus className="h-4 w-4" />
+                    New Request
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Create Leave Request</DialogTitle>
+                  </DialogHeader>
+                  <form onSubmit={handleCreateRequest} className="space-y-4">
+                    <div>
+                      <Label htmlFor="type">Type</Label>
+                      <Select value={formData.type} onValueChange={(val) => setFormData({ ...formData, type: val })}>
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="vacation">Vacation</SelectItem>
+                          <SelectItem value="sick">Sick Leave</SelectItem>
+                          <SelectItem value="personal">Personal</SelectItem>
+                          <SelectItem value="unpaid">Unpaid</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <Label htmlFor="startDate">Start Date</Label>
+                      <Input
+                        id="startDate"
+                        type="date"
+                        value={formData.startDate}
+                        onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
+                        required
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="endDate">End Date</Label>
+                      <Input
+                        id="endDate"
+                        type="date"
+                        value={formData.endDate}
+                        onChange={(e) => setFormData({ ...formData, endDate: e.target.value })}
+                        required
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="reason">Reason</Label>
+                      <Textarea
+                        id="reason"
+                        placeholder="Reason for leave..."
+                        value={formData.reason}
+                        onChange={(e) => setFormData({ ...formData, reason: e.target.value })}
+                        required
+                      />
+                    </div>
+                    <Button type="submit" className="w-full">
+                      Submit Request
+                    </Button>
+                  </form>
+                </DialogContent>
+              </Dialog>
             )}
           </div>
-        </CardContent>
-      </Card>
-    </motion.div>
-  )
-}
 
-function LeaveRequestForm() {
-  const { t } = useTranslation()
-  const [type, setType] = useState<LeaveRequest["type"]>("vacation")
-  const [startDate, setStartDate] = useState("")
-  const [endDate, setEndDate] = useState("")
-  const [reason, setReason] = useState("")
+          <TabsContent value="my-requests" className="space-y-3">
+            {loading ? (
+              <div className="flex items-center justify-center py-8">
+                <p className="text-muted-foreground">Loading requests...</p>
+              </div>
+            ) : myRequests.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-8 text-center">
+                <AlertCircle className="h-8 w-8 text-muted-foreground mb-2" />
+                <p className="text-muted-foreground">No leave requests yet</p>
+              </div>
+            ) : (
+              myRequests.map((request, index) => (
+                <motion.div
+                  key={request.id}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: index * 0.1 }}
+                  className="flex items-center justify-between rounded-lg border border-border p-4 hover:bg-accent/50 transition-colors"
+                >
+                  <div className="flex items-center gap-4">
+                    <Calendar className="h-5 w-5 text-muted-foreground" />
+                    <div>
+                      <p className="font-medium">{request.type}</p>
+                      <p className="text-sm text-muted-foreground">
+                        {new Date(request.start_date).toLocaleDateString()} -{" "}
+                        {new Date(request.end_date).toLocaleDateString()}
+                      </p>
+                    </div>
+                  </div>
+                  {getStatusColor(request.status)}
+                </motion.div>
+              ))
+            )}
+          </TabsContent>
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    // Handle leave request submission
-  }
-
-  return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      <div>
-        <Label htmlFor="type">{t("leaveType")}</Label>
-        <Select value={type} onValueChange={(value: any) => setType(value)}>
-          <SelectTrigger>
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="sick">{t("sick")}</SelectItem>
-            <SelectItem value="vacation">{t("vacation")}</SelectItem>
-            <SelectItem value="personal">{t("personal")}</SelectItem>
-            <SelectItem value="other">{t("other")}</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-      <div className="grid grid-cols-2 gap-4">
-        <div>
-          <Label htmlFor="startDate">Start Date</Label>
-          <Input id="startDate" type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
-        </div>
-        <div>
-          <Label htmlFor="endDate">End Date</Label>
-          <Input id="endDate" type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
-        </div>
-      </div>
-      <div>
-        <Label htmlFor="reason">{t("reason")}</Label>
-        <Textarea id="reason" value={reason} onChange={(e) => setReason(e.target.value)} rows={4} />
-      </div>
-      <div className="flex justify-end gap-2">
-        <Button type="button" variant="outline">
-          {t("cancel")}
-        </Button>
-        <Button type="submit">{t("submit")}</Button>
-      </div>
-    </form>
+          {hasPermission(user?.role || "CUSTOMER", "leave.approve_team") && (
+            <TabsContent value="team-requests" className="space-y-3">
+              {teamRequests.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-8 text-center">
+                  <AlertCircle className="h-8 w-8 text-muted-foreground mb-2" />
+                  <p className="text-muted-foreground">No team requests</p>
+                </div>
+              ) : (
+                teamRequests.map((request, index) => (
+                  <motion.div
+                    key={request.id}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: index * 0.1 }}
+                    className="flex items-center justify-between rounded-lg border border-border p-4 hover:bg-accent/50 transition-colors"
+                  >
+                    <div className="flex items-center gap-4">
+                      <Calendar className="h-5 w-5 text-muted-foreground" />
+                      <div>
+                        <p className="font-medium">{request.type}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {new Date(request.start_date).toLocaleDateString()} -{" "}
+                          {new Date(request.end_date).toLocaleDateString()}
+                        </p>
+                      </div>
+                    </div>
+                    {getStatusColor(request.status)}
+                  </motion.div>
+                ))
+              )}
+            </TabsContent>
+          )}
+        </Tabs>
+      </CardContent>
+    </Card>
   )
 }
