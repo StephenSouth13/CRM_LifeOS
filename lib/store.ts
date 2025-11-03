@@ -192,14 +192,19 @@ export const useAppStore = create<AppState>()(
             body: JSON.stringify({ email, password }),
           })
 
-          const data = await response.json()
-
           if (!response.ok) {
-            console.error("Login failed:", data.error)
+            try {
+              const err = await response.clone().json()
+              console.error("Login failed:", err?.error || err)
+            } catch {
+              const txt = await response.text()
+              console.error("Login failed:", txt)
+            }
             return false
           }
 
-          const { user } = data
+          const data = await response.json()
+          const { user } = data || {}
           if (!user) {
             console.error("No user in response")
             return false
