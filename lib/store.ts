@@ -300,13 +300,19 @@ export const useAppStore = create<AppState>()(
             }
           }
 
-          const { user } = data || {}
-          if (!user) {
-            console.error("No user in register response, full response:", data)
-            return false
+          // Registration succeeded. Backend may not return a full session/user.
+          // Do NOT auto-authenticate the user here; require explicit login or callback flow.
+          if (response.status === 201 || response.status === 200) {
+            console.info("Registration successful")
+            return true
           }
 
-          set({ user, isAuthenticated: true })
+          // If backend returned a user (some flows might), keep it but do not set isAuthenticated
+          const { user } = data || {}
+          if (user) {
+            set({ user })
+          }
+
           return true
         } catch (error) {
           console.error("Registration error:", error)
