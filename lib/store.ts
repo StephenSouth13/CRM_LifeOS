@@ -269,11 +269,43 @@ export const useAppStore = create<AppState>()(
             body: JSON.stringify({ email, password, name, org_id }),
           })
 
-          if (!response.ok) {
-            throw new Error("Registration failed")
+          let bodyText = null
+          try {
+            bodyText = await response.clone().text()
+          } catch (e) {
+            console.warn("Failed to clone register response body:", e)
           }
 
-          const { user } = await response.json()
+          if (!response.ok) {
+            console.error(`Registration failed: status=${response.status} ${response.statusText}`)
+            if (bodyText) {
+              try {
+                console.error("Registration response body:", JSON.parse(bodyText))
+              } catch (e) {
+                console.error("Registration response body (text):", bodyText)
+              }
+            }
+            return false
+          }
+
+          let data: any = {}
+          try {
+            data = await response.json()
+          } catch (e) {
+            try {
+              data = bodyText ? JSON.parse(bodyText) : {}
+            } catch (err) {
+              console.warn("Couldn't parse register response JSON, falling back to empty object", err)
+              data = {}
+            }
+          }
+
+          const { user } = data || {}
+          if (!user) {
+            console.error("No user in register response, full response:", data)
+            return false
+          }
+
           set({ user, isAuthenticated: true })
           return true
         } catch (error) {
