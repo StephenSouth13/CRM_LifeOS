@@ -60,13 +60,19 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    const ADMIN_EMAILS = new Set([
+      "stephensouth1307@gmail.com",
+      "anhlong13@gmail.com",
+      "anhlong13",
+    ])
+
     return NextResponse.json({
       user: {
         id: userProfile.id,
         email: userProfile.email,
         name: userProfile.name,
         avatar: userProfile.avatar,
-        role: primaryMembership.role,
+        role: ADMIN_EMAILS.has(String(userProfile.email).toLowerCase()) ? "ADMIN" : primaryMembership.role,
         orgId: primaryMembership.org_id,
         teamId: primaryMembership.team_id,
         manager_id: userProfile.manager_id,
