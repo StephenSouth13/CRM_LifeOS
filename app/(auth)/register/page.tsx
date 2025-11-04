@@ -1,3 +1,4 @@
+//app/(auth)/register/page.tsx
 "use client"
 
 import type React from "react"

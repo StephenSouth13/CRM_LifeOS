@@ -94,7 +94,7 @@ export const translations = {
     userStatus: "Trạng thái người dùng",
     active: "Hoạt động",
     inactive: "Không hoạt động",
-    admin: "Quản trị viên",
+    role_admin: "Quản trị viên",
     user: "Người dùng",
     manager: "Quản lý",
     totalUsers: "Tổng người dùng",
@@ -245,7 +245,7 @@ export const translations = {
     next: "Tiếp theo",
     previous: "Trước đó",
     shuffle: "Ngẫu nhiên",
-    repeat: "Lặp lại",
+    mediaRepeat: "Lặp lại",
 
     // Sections
     sections: "Phần",
@@ -496,7 +496,7 @@ export const translations = {
     dontHaveAccount: "Don't have an account?",
     rememberMe: "Remember me",
     orContinueWith: "Or continue with",
-    fullName: "Full name",
+    full_Name: "Full name",
     agreeToTerms: "I agree to the",
     termsOfService: "Terms of Service",
     and: "and",

@@ -1,98 +1,102 @@
-import { NextRequest, NextResponse } from "next/server"
-import { NextRequest, NextResponse } from "next/server"
-import { supabaseAdmin } from "@/lib/supabase/supabase"
+// File: app/api/auth/login/route.ts
+
+import { NextRequest, NextResponse } from "next/server";
+import { supabaseAdmin } from "@/lib/supabase/supabase"; // Cần supabaseAdmin (Service Role Key)
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json()
-    const { email, password } = body
+    const body = await request.json();
+    const { email, password } = body;
 
+    // 1. Kiểm tra Dữ liệu Bắt buộc
     if (!email || !password) {
       return NextResponse.json(
-        { error: "Email and password required" },
+        { error: "Email and password required." },
         { status: 400 },
-      )
+      );
     }
 
     if (!supabaseAdmin) {
-      console.error('supabaseAdmin not configured on server')
-      return NextResponse.json({ error: 'Server configuration error' }, { status: 500 })
+      console.error("supabaseAdmin not configured on server");
+      return NextResponse.json(
+        { error: "Server configuration error." },
+        { status: 500 },
+      );
     }
 
-    // Authenticate user with Supabase
+    // 2. Xác thực bằng Supabase Auth
     const { data: authData, error: authError } =
       await supabaseAdmin.auth.signInWithPassword({
         email,
         password,
-      })
+      });
 
-    if (authError) {
+    if (authError || !authData.user) {
       return NextResponse.json(
-        { error: "Invalid email or password" },
+        { error: "Invalid email or password." },
         { status: 401 },
-      )
+      );
     }
 
-    if (!authData.user) {
-      return NextResponse.json(
-        { error: "Authentication failed" },
-        { status: 401 },
-      )
-    }
-
-    // Get user profile with role
+    // 3. Lấy Profile, Membership và Role Key (JOIN 3 Bảng)
     const { data: userProfile, error: profileError } = await supabaseAdmin
       .from("user_profiles")
-      .select("*, memberships(*)")
+      .select(
+        `
+          *,
+          memberships (
+            *,
+            roles (role_key, role_name)
+          )
+        `,
+      )
       .eq("id", authData.user.id)
-      .single()
+      .single();
 
     if (profileError || !userProfile) {
       return NextResponse.json(
-        { error: "User profile not found" },
+        { error: "User profile or membership data not found." },
         { status: 404 },
-      )
+      );
     }
 
-    // Get primary membership for role
-    const primaryMembership = userProfile.memberships?.find(
-      (m: any) => m.is_primary,
-    )
+    // Lấy Primary Membership và Role Key
+    const primaryMembership: any = userProfile.memberships?.[0]; // Giả định lấy membership đầu tiên
+    const roleKey = primaryMembership?.roles?.role_key || "pending_approval";
+    const accountStatus = userProfile.account_status;
 
-    if (!primaryMembership) {
-      return NextResponse.json(
-        { error: "User membership not found" },
-        { status: 404 },
-      )
+    // 4. KIỂM TRA TRẠNG THÁI PHÊ DUYỆT BẮT BUỘC (Manual Vetting Workflow)
+    if (accountStatus !== "APPROVED") {
+        // Trả về 403 Forbidden hoặc 401 Unauthorized và thông báo lý do
+        return NextResponse.json(
+            { 
+                error: "Your account is not approved yet.",
+                status: accountStatus // Trả về trạng thái PENDING/REJECTED
+            },
+            { status: 401 }
+        );
     }
 
-    const ADMIN_EMAILS = new Set([
-      "stephensouth1307@gmail.com",
-      "anhlong13@gmail.com",
-      "anhlong13",
-    ])
-
+    // 5. Trả về Dữ liệu User Hoàn chỉnh
     return NextResponse.json({
       user: {
         id: userProfile.id,
         email: userProfile.email,
         name: userProfile.name,
-        avatar: userProfile.avatar,
-        role: ADMIN_EMAILS.has(String(userProfile.email).toLowerCase()) ? "ADMIN" : primaryMembership.role,
-        orgId: primaryMembership.org_id,
-        teamId: primaryMembership.team_id,
+        // Dữ liệu Role THẬT TẾ (RBAC)
+        role_key: roleKey, 
         manager_id: userProfile.manager_id,
-        status: userProfile.status,
-        createdAt: userProfile.created_at,
-        updatedAt: userProfile.updated_at,
+        org_id: primaryMembership.org_id,
+        account_status: accountStatus,
+        // ... thêm các trường khác nếu cần
       },
       session: authData.session,
-    })
+    });
   } catch (error) {
-    console.error("Login error:", error)
+    console.error("Login fatal error:", error);
     return NextResponse.json(
-      { error: "Internal server error" },
+      { error: "Internal server error." },
       { status: 500 },
-    )
+    );
   }
 }
