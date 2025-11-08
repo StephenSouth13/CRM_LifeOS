@@ -1,13 +1,14 @@
 // File: app/auth/update-password/page.tsx
 
 "use client";
+import { Label } from "@/components/ui/label";
 
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { supabaseBrowser } from "@/lib/supabase/supabase"; // Đảm bảo import client đúng
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { useToast } from "@/hooks/use-toast"; // Giả định bạn có toast hook
+import { useToast } from "@/hooks/use-toast";
 
 export default function UpdatePasswordPage() {
   const router = useRouter();
@@ -15,30 +16,42 @@ export default function UpdatePasswordPage() {
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
-  const [isReady, setIsReady] = useState(false); // Trạng thái sẵn sàng để hiển thị form
+  const [isReady, setIsReady] = useState(false); // Trạng thái sẵn sàng hiển thị form
 
   useEffect(() => {
     // 1. Lắng nghe trạng thái Auth để bắt phiên PASSWORD_RECOVERY
     const { data: authListener } = supabaseBrowser.auth.onAuthStateChange(
       (event, session) => {
-        // Supabase đặt phiên tạm thời và chuyển Event thành 'SIGNED_IN'
-        // Chúng ta chỉ cần đảm bảo có session tồn tại
+        // Event SIGNED_IN được kích hoạt khi Supabase Auth xử lý token trong URL
         if (session) {
           setIsReady(true);
-        } else {
-          // Nếu không có session, có thể chuyển hướng về trang login sau 1 giây
-          setTimeout(() => {
-            if (!isReady) router.push("/auth/login");
-          }, 1000);
+        } else if (event === 'SIGNED_OUT') {
+           // Nếu bị sign out đột ngột (hoặc phiên hết hạn), chuyển hướng
+           router.push("/auth/login");
         }
       },
     );
+
+    // 2. Bắt session ban đầu (FIX LOGIC):
+    // Đảm bảo form hiển thị ngay nếu token đã có trong URL
+    const checkSession = async () => {
+        const { data: { session } } = await supabaseBrowser.auth.getSession();
+        if (session) {
+            setIsReady(true);
+        } else {
+            // Chuyển hướng sau một khoảng thời gian ngắn nếu session không được tìm thấy
+            setTimeout(() => {
+                 if (!isReady) router.push("/auth/login");
+             }, 100);
+        }
+    };
+    checkSession();
 
     // Dọn dẹp listener khi component unmount
     return () => {
       authListener?.subscription.unsubscribe();
     };
-  }, [router, isReady]);
+  }, [router]); // Bỏ isReady khỏi dependency array để tránh loop
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -50,9 +63,15 @@ export default function UpdatePasswordPage() {
       });
       return;
     }
+
+    if (newPassword.length < 6) {
+        toast({ title: "Lỗi", description: "Mật khẩu phải từ 6 ký tự trở lên.", variant: "destructive" });
+        return;
+    }
+
     setLoading(true);
 
-    // 2. Gọi API để cập nhật mật khẩu
+    // 3. Gọi API để cập nhật mật khẩu
     const { error } = await supabaseBrowser.auth.updateUser({
       password: newPassword,
     });
@@ -68,7 +87,7 @@ export default function UpdatePasswordPage() {
     } else {
       toast({
         title: "Thành công",
-        description: "Mật khẩu đã được cập nhật. Bạn có thể đăng nhập ngay.",
+        description: "Mật khẩu đã được cập nhật. Vui lòng đăng nhập lại.",
       });
       // Chuyển hướng về trang đăng nhập sau khi đổi xong
       router.push("/auth/login");
@@ -88,7 +107,7 @@ export default function UpdatePasswordPage() {
 
         <div className="space-y-4">
           <div>
-            <label htmlFor="newPassword">Mật khẩu Mới</label>
+            <Label htmlFor="newPassword">Mật khẩu Mới</Label>
             <Input
               id="newPassword"
               type="password"
@@ -99,7 +118,7 @@ export default function UpdatePasswordPage() {
             />
           </div>
           <div>
-            <label htmlFor="confirmPassword">Xác nhận Mật khẩu</label>
+            <Label htmlFor="confirmPassword">Xác nhận Mật khẩu</Label>
             <Input
               id="confirmPassword"
               type="password"
