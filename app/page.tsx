@@ -1,27 +1,21 @@
-"use client"
+// File: D:\CRM\CRM_LifeOS\app\page.tsx (Thay thế bằng code này)
+// KHÔNG CÓ "use client" - Đây là Server Component
 
-import { useEffect } from "react"
-import { useRouter } from "next/navigation"
-import { useAppStore } from "@/lib/store"
+import { redirect } from "next/navigation"
+import { createSupabaseServerClient } from '@/lib/supabase/server'; // Import từ file vừa tạo
 
-export default function HomePage() {
-  const router = useRouter()
-  const isAuthenticated = useAppStore((state) => state.isAuthenticated)
+export default async function HomePage() {
+  const supabase = createSupabaseServerClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  
+  // 1. Nếu đã đăng nhập, chuyển thẳng đến /dashboard
+  if (user) {
+    redirect("/dashboard");
+  }
 
-  useEffect(() => {
-    if (isAuthenticated) {
-      router.push("/dashboard")
-    } else {
-      router.push("/auth/login")
-    }
-  }, [isAuthenticated, router])
-
-  return (
-    <div className="flex min-h-screen items-center justify-center">
-      <div className="flex items-center gap-2">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-emerald-500 border-t-transparent" />
-        <span className="text-muted-foreground">Redirecting...</span>
-      </div>
-    </div>
-  )
+  // 2. Nếu chưa đăng nhập, chuyển thẳng đến /auth/login
+  // Việc này an toàn vì nó là redirect Server-Side
+  redirect("/auth/login");
+  
+  // Lưu ý: Không cần trả về JSX vì hàm redirect() sẽ được gọi
 }

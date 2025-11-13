@@ -1,111 +1,92 @@
-// File: app/api/auth/login/route.ts
-// Chức năng: Xử lý đăng nhập, xác thực qua Supabase, kiểm tra trạng thái phê duyệt (Manual Vetting) và Role.
+// File: app/api/auth/login/route.ts (Logic đăng nhập và kiểm tra phê duyệt)
 
 import { NextRequest, NextResponse } from "next/server";
-import { supabaseAdmin } from "@/lib/supabase/supabase"; // Client Admin (sử dụng Service Role Key)
+// Import hai hàm client đã được FIX lỗi
+import { createSupabaseServerClient } from "@/lib/supabase/server"; 
+import { getSupabaseAdmin } from "@/lib/supabase/supabase"; 
 
 export async function POST(request: NextRequest) {
+  let body: any;
+
+  // 1. Khởi tạo Admin Client (để fetch profile bỏ qua RLS)
+  const supabaseAdmin = getSupabaseAdmin(); 
+  
   try {
-    const body = await request.json();
-    const { email, password } = body;
-
-    // 1. KIỂM TRA INPUT BẮT BUỘC
-    if (!email || !password) {
-      // Trả về lỗi 400 nếu thiếu trường
-      return NextResponse.json(
-        { error: "Email and password required." },
-        { status: 400 },
-      );
-    }
-
-    if (!supabaseAdmin) {
-      // Kiểm tra cấu hình Serverless (Service Role Key)
-      console.error("supabaseAdmin not configured on server");
-      return NextResponse.json(
-        { error: "Server configuration error." },
-        { status: 500 },
-      );
-    }
-
-    // 2. XÁC THỰC BẰNG SUPABASE AUTH
-    const { data: authData, error: authError } =
-      await supabaseAdmin.auth.signInWithPassword({
-        email,
-        password,
-      });
-
-    if (authError || !authData.user) {
-      // Trả về 401 nếu email/mật khẩu không khớp
-      return NextResponse.json(
-        { error: "Invalid email or password." },
-        { status: 401 },
-      );
-    }
-
-    // 3. LẤY PROFILE, MEMBERSHIP VÀ ROLE KEY (JOIN 3 Bảng)
-    const { data: userProfile, error: profileError } = await supabaseAdmin
-      .from("user_profiles")
-      .select(
-        `
-          *,
-          memberships (
-            *,
-            roles (role_key, role_name) // Join để lấy role_key và role_name
-          )
-        `,
-      )
-      .eq("id", authData.user.id)
-      .single();
-
-    if (profileError || !userProfile) {
-      // Trả về 404 nếu hồ sơ hoặc Membership chưa được tạo (Lỗi DB)
-      return NextResponse.json(
-        { error: "User profile or membership data not found." },
-        { status: 404 },
-      );
-    }
-
-    // Lấy Primary Membership và Role Key một cách AN TOÀN (FIX UNDEFINED ERROR)
-    const primaryMembership: any = userProfile.memberships?.[0]; 
-    const safeMembership = primaryMembership || {}; // FIX: Tạo đối tượng an toàn nếu membership rỗng
-
-    const roleKey = safeMembership?.roles?.role_key || "pending_approval";
-    const accountStatus = userProfile.account_status;
-
-    // 4. KIỂM TRA TRẠNG THÁI PHÊ DUYỆT BẮT BUỘC (Manual Vetting Workflow)
-    if (accountStatus !== "APPROVED") {
-        // Nếu trạng thái là PENDING, chặn đăng nhập và trả về 401/403
-        return NextResponse.json(
-            { 
-                error: "Your account is not approved yet. Please wait for administrator approval.",
-                status: accountStatus // Trả về trạng thái PENDING/REJECTED
-            },
-            { status: 401 } // Dùng 401 để ngăn chặn phiên Auth
-        );
-    }
-
-    // 5. TRẢ VỀ DỮ LIỆU USER HOÀN CHỈNH (Nếu APPROVED)
-    return NextResponse.json({
-      user: {
-        id: userProfile.id,
-        email: userProfile.email,
-        name: userProfile.name,
-        // Dữ liệu Role THẬT TẾ (RBAC)
-        role_key: roleKey, 
-        manager_id: userProfile.manager_id,
-        // FIX: Truy cập an toàn, trả về null nếu membership không có org_id
-        org_id: safeMembership.org_id || null, 
-        account_status: accountStatus,
-        // Bổ sung các trường cần thiết khác cho Frontend
-        is_authenticated: true
-      },
-      session: authData.session,
-    });
+    // 2. Cố gắng đọc JSON body (bọc try/catch để bắt lỗi SyntaxError)
+    body = await request.json();
   } catch (error) {
-    console.error("Login fatal error:", error);
+    console.error('Lỗi đọc JSON trong API Login:', error);
     return NextResponse.json(
-      { error: "Internal server error." },
-      { status: 500 },
+      { error: "Invalid request body format (must be JSON)." },
+      { status: 400 },
     );
   }
+
+  // 3. KIỂM TRA INPUT BẮT BUỘC
+  const { email, password } = body;
+  if (!email || !password || !supabaseAdmin) {
+    return NextResponse.json(
+      { error: "Missing required fields or server configuration error." },
+      { status: 400 },
+    );
+  }
+
+  // 4. XÁC THỰC BẰNG SUPABASE AUTH (Dùng client quản lý cookies)
+  const supabase = createSupabaseServerClient(); 
+  
+  const { data: authData, error: authError } =
+    await supabase.auth.signInWithPassword({ email, password });
+
+  if (authError || !authData.user) {
+    // Session Auth không thành công
+    return NextResponse.json({ error: "Invalid email or password." }, { status: 401 });
+  }
+
+  // 5. LẤY PROFILE VÀ ROLE KEY (Dùng Client Admin để BỎ QUA RLS)
+  const { data: userProfile, error: profileError } = await supabaseAdmin
+    .from("user_profiles")
+    .select(
+      `*, memberships (*, roles (role_key, role_name))`,
+    )
+    .eq("id", authData.user.id)
+    .single();
+
+  if (profileError || !userProfile) {
+    await supabase.auth.signOut(); // Đăng xuất để session lỗi không tồn tại
+    return NextResponse.json(
+      { error: "User profile or membership data not found." },
+      { status: 404 },
+    );
+  }
+
+  // 6. KIỂM TRA TRẠNG THÁI PHÊ DUYỆT BẮT BUỘC
+  const primaryMembership: any = userProfile.memberships?.[0] || {}; 
+  const roleKey = primaryMembership?.roles?.role_key || "pending_approval";
+  const accountStatus = userProfile.account_status;
+
+  if (accountStatus !== "APPROVED") {
+    await supabase.auth.signOut(); // CRITICAL: Đăng xuất để ngăn truy cập
+    
+    return NextResponse.json(
+      { 
+        error: "Your account is not approved yet. Please wait for administrator approval.",
+        status: accountStatus 
+      },
+      { status: 403 } // Forbidden
+    );
+  }
+
+  // 7. TRẢ VỀ DỮ LIỆU USER HOÀN CHỈNH (Thành công)
+  return NextResponse.json({
+    user: {
+      id: userProfile.id,
+      email: userProfile.email,
+      name: userProfile.full_name, 
+      role_key: roleKey, 
+      org_id: primaryMembership.org_id || null, 
+      account_status: accountStatus,
+      is_authenticated: true
+    },
+    session: authData.session,
+  });
 }

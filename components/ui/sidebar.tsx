@@ -1,3 +1,6 @@
+// File: components/ui/sidebar.tsx (Tạo file mới)
+// Tạo thư mục components/ui/ và đặt file sidebar.tsx vào đó
+// CÓ "use client" - Đây là Client Component
 'use client'
 
 import * as React from 'react'
